@@ -92,11 +92,11 @@ async function initAnim() {
       L.reg = {
         // video framing: the burger stays centred (~47% of the width) from the hero to the stack
         hero: { x0: L.vw * 0.31, x1: L.vw * 0.63, y0: top, y1: bot },
-        smash: { x0: L.vw * 0.26, x1: L.vw * 0.6, y0: top + (L.vh - top) * 0.05, y1: L.vh * 0.8 },
+        smash: { x0: L.vw * 0.34, x1: L.vw * 0.64, y0: top + (L.vh - top) * 0.02, y1: L.vh * 0.84 }, // video: centred, the title overlaps its right edge
         stack: { x0: L.vw * 0.31, x1: L.vw * 0.65, y0: top - 2, y1: L.vh * 0.97 }, // labels sit right of x1
         combo: { x0: L.vw * 0.07, x1: L.vw * 0.6, y0: top + 30, y1: bot - 24 }, // video: the reassembled set sits left of centre
         boxOpen: { x0: L.vw * 0.05, x1: L.vw * 0.72, y0: top + 6, y1: L.vh - 10 }, // whole box incl. the open lid, kept below the nav
-        boxFront: { x0: L.vw * 0.1, x1: L.vw * 0.9, y0: top + (L.vh - top) * 0.2, y1: L.vh * 0.78 },
+        boxFront: { x0: L.vw * 0.15, x1: L.vw * 0.86, y0: top + (L.vh - top) * 0.24, y1: L.vh * 0.74 }, // z028 framing
       };
     } else {
       const above = (k, extra = 0) => ({ x0: 14, x1: L.vw - 14, y0: top, y1: r[k].y - 16 - extra });
@@ -157,7 +157,8 @@ async function initAnim() {
     .to(S, { seg: 1, duration: 1.0 }, 0.85)
     .to(S, { photo: 0, duration: 0.15 }, 0.92)
     .to(S, { explode: 0.42, duration: 0.85, ease: 'power2.out' }, 0.9)
-    .to(noPaper, { opacity: 1, duration: 0.6 }, 0.95) // napkin fully gone by pin ≈0.16 (same table, no paper)
+    // v6: like the video the napkin stays; the table + paper slide down-left as the burger splits (z009/z010)
+    .to(plate, { xPercent: -22, yPercent: 16, duration: 1.4, ease: 'power1.inOut' }, 0.9)
     .to('.bg-shade', { opacity: 0.62, duration: 0.8 }, 0.95)
     .to('.scrim-r', { opacity: 1, duration: 0.5 }, 1.4);
   show(panels.smash, 1.45);
@@ -238,7 +239,7 @@ async function initAnim() {
     if (document.readyState === 'complete') later(); else addEventListener('load', later, { once: true });
   });
   const yieldMain = () => new Promise(r => setTimeout(r, 0));
-  const THREE = await import('./vendor/three-app.js?v=5');
+  const THREE = await import('./vendor/three-app.js?v=6');
   const canvas = $('#gl');
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'high-performance' });
   renderer.setClearColor(0x000000, 0);
@@ -397,7 +398,7 @@ async function initAnim() {
   /* ---------- combo food: photographic 2.5D sprites (camera-facing photo layers + contact shadows) ----------
      Each item is a group anchored at its base. Its photo layers always face the camera (so they read like the video's
      photography), get a slight per-layer yaw/roll for depth while they fly in, and sit on a soft contact shadow once in the box. */
-  const [pileT, trayT, dipOT, dipDT, shakeT] = await Promise.all(['f_pile', 'f_tray', 'f_dipo', 'f_dipd', 'f_shake'].map(n => tex(`assets/img/${n}.webp?v=5`)));
+  const [pileT, trayT, dipOT, dipDT, shakeT] = await Promise.all(['f_pile', 'f_tray', 'f_dipo', 'f_dipd', 'f_shake'].map(n => tex(`assets/img/${n}.webp?v=6`)));
   const blob = canvasTex(256, 128, (g, w, h) => { const gr = g.createRadialGradient(w / 2, h / 2, 2, w / 2, h / 2, w / 2); gr.addColorStop(0, 'rgba(0,0,0,.85)'); gr.addColorStop(0.55, 'rgba(0,0,0,.4)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.setTransform(1, 0, 0, 0.5, 0, h / 4); g.fillStyle = gr; g.fillRect(0, 0, w, w); });
   function layerMesh(t, w, opts = {}) {
     const ar = t.image.height / t.image.width, h = w * ar;

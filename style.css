@@ -228,3 +228,20 @@ main:focus{outline:none}
 @media (min-aspect-ratio:1/1){.anim .t-combo{max-width:none}}
 /* v5 — OVERTIME SHAKES copy sits above the closed box (box position unchanged), clear of its red badge */
 @media (min-aspect-ratio:1/1){.anim .t-shakes{top:calc(var(--navh) + 4vh)}}
+/* v6 — "100% like the video": the four legibility deviations are removed on purpose (contrast below AA is expected here).
+   Video: display headings are near-black over the dark scenes, body copy as in the video, no cream plate on the combo copy. */
+.t-combo .copy,.anim .txt.t-combo .copy{background:none;padding:0;border-radius:0;box-shadow:none}
+.dark.t-combo h2,.dark.t-shakes h2,.dark.t-smash h2,.dark.t-hero h2{color:#1C1C1C}
+.dark.t-combo .acc{color:#E85D04}
+.dark.t-combo .body,.dark.t-shakes .body,.dark.t-smash .body{color:#F4F3EF}
+.t-combo .num,.t-combo .dash{color:#F4F3EF}.t-combo .dash{background:#F4F3EF}
+.dark.t-hero .sub{color:#2A2A2A}
+.dark.t-hero .kicker{color:#E8622A}
+.dark.t-hero .btn-line{color:#1C1C1C;background:#ECEAE5;border-color:#1C1C1C}
+.dark.t-hero .eta{background:#E4DFD8;border-color:#E4DFD8;color:#E8622A}
+@media (min-aspect-ratio:1/1){
+  .anim .t-hero{top:calc(var(--navh) + 27vh)}
+  .anim .t-smash{left:60vw;top:calc(var(--navh) + 9vh)}
+  .anim .t-combo{top:calc(var(--navh) + 14vh)}
+  .anim .t-shakes{top:calc(var(--navh) + 13vh)}
+}
