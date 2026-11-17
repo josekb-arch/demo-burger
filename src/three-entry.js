@@ -5,3 +5,4 @@ export {
   PCFSoftShadowMap, ACESFilmicToneMapping, NoToneMapping, Euler, Matrix4, CylinderGeometry, CircleGeometry, SphereGeometry,
 } from 'three';
 export * from './combo3d.js';
+export * from './food3d.js';
