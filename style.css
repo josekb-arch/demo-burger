@@ -226,3 +226,5 @@ main:focus{outline:none}
 
 @media (max-width:820px){.anim .t-combo{bottom:16px}.t-combo .copy,.anim .txt.t-combo .copy{padding:14px 16px 16px}}
 @media (min-aspect-ratio:1/1){.anim .t-combo{max-width:none}}
+/* v5 — OVERTIME SHAKES copy sits above the closed box (box position unchanged), clear of its red badge */
+@media (min-aspect-ratio:1/1){.anim .t-shakes{top:calc(var(--navh) + 4vh)}}

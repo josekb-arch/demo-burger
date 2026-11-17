@@ -174,8 +174,8 @@ async function initAnim() {
       .to(sp, { y: () => -L.vh * (L.portrait ? 0.08 : 0.5), duration: 1.0, ease: 'none' }, 4.15)
       .to(sp, { autoAlpha: 0, duration: 0.2, ease: 'none' }, 5.08); }
   tl.to(labelsEl, { autoAlpha: 0, duration: 0.25 }, 4.15)
-    .to(S, { explode: 0, duration: 0.7 }, 4.3)
-    .to(S, { photo: 1, duration: 0.15 }, 4.85)
+    .to(S, { explode: 0, duration: 0.5 }, 4.3)
+    .to(S, { photo: 1, duration: 0.05, ease: 'none' }, 4.8)
     .to(S, { items: 1, duration: 0.85, ease: 'power3.out' }, 4.4)
     .to(S, { seg: 3, duration: 0.8 }, 4.3)
     .to('.bg-kitchen', { autoAlpha: 1, duration: 0.6 }, 5.25)
@@ -238,7 +238,7 @@ async function initAnim() {
     if (document.readyState === 'complete') later(); else addEventListener('load', later, { once: true });
   });
   const yieldMain = () => new Promise(r => setTimeout(r, 0));
-  const THREE = await import('./vendor/three-app.js?v=4');
+  const THREE = await import('./vendor/three-app.js?v=5');
   const canvas = $('#gl');
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'high-performance' });
   renderer.setClearColor(0x000000, 0);
@@ -270,6 +270,17 @@ async function initAnim() {
 
   const burger = new THREE.Group(); scene.add(burger);
   const planeMat = (t) => new THREE.MeshBasicMaterial({ map: t, transparent: true, depthWrite: false, toneMapped: false });
+  // thickness for photo cut-outs: darker copies stacked behind the face, so any yaw shows a solid edge (2.5D volume)
+  function addSlices(m, n, depth, dark = 0.42, dy = 0) {
+    const sl = [];
+    for (let j = 1; j <= n; j++) {
+      const k = j / n, c = Math.round(255 * (1 - (1 - dark) * Math.min(1, 0.45 + k * 0.55))) * 0x010101;
+      const sm = new THREE.Mesh(m.geometry, new THREE.MeshBasicMaterial({ map: m.material.map, transparent: true, depthWrite: false, toneMapped: false, color: c, opacity: 0 }));
+      sm.position.set(0, -dy * k, -depth * k); sm.renderOrder = m.renderOrder - 1; m.add(sm); sl.push(sm);
+    }
+    m.userData.slices = sl; return sl;
+  }
+  const syncSlices = (m, op) => { const sl = m.userData.slices; if (!sl) return; for (const c of sl) { c.material.opacity = op; c.visible = op > 0.003; } };
   const layers = LAY.map((l, i) => {
     const m = new THREE.Mesh(new THREE.PlaneGeometry(l[3] / 100, l[4] / 100), planeMat(layerTex[i]));
     m.userData.base = { x: (l[1] + l[3] / 2 - CX) / 100, y: -(l[2] + l[4] / 2 - CY) / 100 };
@@ -283,9 +294,8 @@ async function initAnim() {
     const pw = l[3] / 100, ph = l[4] / 100;
     const sh = new THREE.Mesh(new THREE.PlaneGeometry(pw * 1.12, ph * 1.25), new THREE.MeshBasicMaterial({ map: st, transparent: true, depthWrite: false, opacity: 0 }));
     sh.position.set(0.04, -ph * 0.32, -0.06); sh.renderOrder = 9; m.add(sh);
-    const edge = new THREE.Mesh(m.geometry, new THREE.MeshBasicMaterial({ map: layerTex[i], transparent: true, depthWrite: false, toneMapped: false, color: 0x7a5030 }));
-    edge.position.set(0, -Math.min(0.055, ph * 0.075), -0.012); edge.renderOrder = 9; m.add(edge);
-    m.userData.sh = sh; m.userData.edge = edge;
+    addSlices(m, 5, 0.16, 0.45, Math.min(0.06, ph * 0.08));
+    m.userData.sh = sh;
     return m;
   });
   // shadow under the burger on the paper
@@ -297,7 +307,7 @@ async function initAnim() {
 
   // bottom-anchored billboard items (photo burger, fries, sauce, shake). Unit = 1 world unit wide.
   function item(t, w, h) { const g = new THREE.PlaneGeometry(1, h / w); g.translate(0, h / w / 2, 0); const m = new THREE.Mesh(g, planeMat(t)); m.renderOrder = 30; scene.add(m); return m; }
-  const photo = item(photoTex, 800, 659);
+  const photo = item(photoTex, 800, 659); addSlices(photo, 6, 0.06, 0.5);
 
   /* ---------- the box (procedural, canvas textures) ---------- */
   await document.fonts.load('100px Anton'); await yieldMain();
@@ -387,13 +397,13 @@ async function initAnim() {
   /* ---------- combo food: photographic 2.5D sprites (camera-facing photo layers + contact shadows) ----------
      Each item is a group anchored at its base. Its photo layers always face the camera (so they read like the video's
      photography), get a slight per-layer yaw/roll for depth while they fly in, and sit on a soft contact shadow once in the box. */
-  const [pileT, trayT, dipOT, dipDT, shakeT] = await Promise.all(['f_pile', 'f_tray', 'f_dipo', 'f_dipd', 'f_shake'].map(n => tex(`assets/img/${n}.webp?v=4`)));
+  const [pileT, trayT, dipOT, dipDT, shakeT] = await Promise.all(['f_pile', 'f_tray', 'f_dipo', 'f_dipd', 'f_shake'].map(n => tex(`assets/img/${n}.webp?v=5`)));
   const blob = canvasTex(256, 128, (g, w, h) => { const gr = g.createRadialGradient(w / 2, h / 2, 2, w / 2, h / 2, w / 2); gr.addColorStop(0, 'rgba(0,0,0,.85)'); gr.addColorStop(0.55, 'rgba(0,0,0,.4)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.setTransform(1, 0, 0, 0.5, 0, h / 4); g.fillStyle = gr; g.fillRect(0, 0, w, w); });
   function layerMesh(t, w, opts = {}) {
     const ar = t.image.height / t.image.width, h = w * ar;
     const geo = new THREE.PlaneGeometry(w, h); geo.translate(0, h / 2 - (opts.sink || 0) * h, 0);
     const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: t, transparent: true, depthWrite: false, toneMapped: false, color: opts.tint || 0xffffff }));
-    if (opts.flip) m.scale.x = -1; m.renderOrder = 40; m.userData = { h, w, dx: opts.dx || 0, dz: opts.dz || 0, yaw: opts.yaw || 0, op: opts.op ?? 1 }; return m;
+    if (opts.flip) m.scale.x = -1; m.renderOrder = 40; m.userData = { h, w, dx: opts.dx || 0, dz: opts.dz || 0, yaw: opts.yaw || 0, op: opts.op ?? 1 }; addSlices(m, 5, w * 0.07, 0.42); return m;
   }
   function sprite(layersDef, shadowW, boxOnly = []) {
     const g = new THREE.Group(); const L2 = layersDef.map(([t, w, o]) => layerMesh(t, w, o));
@@ -411,7 +421,7 @@ async function initAnim() {
   const burgerSh = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 0.82), new THREE.MeshBasicMaterial({ map: blob, transparent: true, depthWrite: false, opacity: 0 }));
   burgerSh.rotation.x = -Math.PI / 2; burgerSh.renderOrder = 35; box.add(burgerSh); burgerSh.position.set(SLOT.photo[0], SLOT.photo[1] + 0.006, SLOT.photo[2]);
   const FOOD = { fries, dipO, dipD, shake };
-  fries.userData.k = 0.95; shake.userData.k = 0.8; dipO.userData.k = dipD.userData.k = 0.44;
+  fries.userData.lift = 1.7; dipO.userData.lift = dipD.userData.lift = 1.1; shake.userData.lift = 0.5; fries.userData.k = 0.95; shake.userData.k = 0.8; dipO.userData.k = dipD.userData.k = 0.44;
 
   await yieldMain();
   /* ---------- fitting helpers ---------- */
@@ -505,6 +515,7 @@ async function initAnim() {
     }
     m.position.set(x, y, z); m.scale.setScalar(Math.max(w, 1e-4));
     m.material.opacity = opacity; m.visible = opacity > 0.003;
+    if (m.userData.slices) { m.rotation.y = k > 0 ? Math.max(-0.16, box.rotation.y * 0.35 + 0.05) * ease(clamp01(k * 1.4)) : 0; syncSlices(m, k > 0 ? opacity * ease(clamp01(k * 3)) : 0); }
   }
   const qInv = new THREE.Quaternion(), qF = new THREE.Quaternion(), eF = new THREE.Euler();
   const qA = new THREE.Quaternion(), qB = new THREE.Quaternion(), eA = new THREE.Euler(), vS = new THREE.Vector3(), qSlot = new THREE.Quaternion();
@@ -516,7 +527,7 @@ async function initAnim() {
     if (k > 0) {
       vS.set(slot[0], slot[1], slot[2]); box.localToWorld(vS); const kk = ease(clamp01(k));
       qSlot.setFromAxisAngle(vS.clone().set(0, 1, 0), yaw * 0.4); qB.copy(box.quaternion).multiply(qSlot);
-      x = lerp(x, vS.x, kk); y = lerp(y, vS.y, kk); z = lerp(z, vS.z, kk); sc = lerp(sF, box.scale.x * (o.userData.k || 1), kk); qA.slerp(qB, kk);
+      x = lerp(x, vS.x, kk); y = lerp(y, vS.y, kk) + Math.sin(Math.PI * kk) * (o.userData.lift ?? 0.9) * box.scale.x; z = lerp(z, vS.z, kk) + Math.sin(Math.PI * kk) * 0.6 * box.scale.x; // arc: items drop into their compartments from above sc = lerp(sF, box.scale.x * (o.userData.k || 1), kk); qA.slerp(qB, kk);
     }
     o.position.set(x, y, z); o.scale.setScalar(sc); o.quaternion.copy(qA);
   }
@@ -532,8 +543,8 @@ async function initAnim() {
       m.position.set(b.x + Math.sin(i * 2.1) * 0.12 * e, b.y * sp + fl, (2.5 - i) * 0.22 * e);
       m.rotation.z = (i % 2 ? 1 : -1) * 0.05 * e;
       m.material.opacity = layerOp; m.visible = layerOp > 0.003;
-      const vol = clamp01((e - 0.15) / 0.3); m.userData.sh.material.opacity = i === 5 ? 0 : 0.42 * layerOp * vol; m.userData.edge.material.opacity = layerOp * (0.35 + 0.65 * vol);
-      m.rotation.y = (i - 2.5) * 0.035 * e; // tiny per-layer yaw: the layers turn slightly differently as the burger spins → parallax depth
+      const vol = clamp01((e - 0.15) / 0.3); m.userData.sh.material.opacity = i === 5 ? 0 : 0.42 * layerOp * vol; syncSlices(m, layerOp * vol);
+      m.rotation.y = (i - 2.5) * 0.07 * e + 0.22 * e; // tiny per-layer yaw: the layers turn slightly differently as the burger spins → parallax depth
     });
     // shadow on the hero paper
     const shOp = clamp01(1 - S.seg * 2.2);
@@ -558,10 +569,10 @@ async function initAnim() {
     const inBox = S.lid < 0.93 ? 1 : 0, lidHideShake = 1 - clamp01((S.lid - 0.12) / 0.3);
     placeItem(photo, [0, -2.02 + 0.12 * S.hz * (1 - S.items), 4.9 * (1 + 0.05 * S.hz * (1 - S.items))], SLOT.photo, 1, kBox, S.photo * inBox);
     const shK = ease(clamp01((kBox - 0.55) / 0.45));
-    burgerSh.material.opacity = 0.75 * shK * S.photo * inBox; burgerSh.visible = box.visible && burgerSh.material.opacity > 0.01;
+    burgerSh.material.opacity = 0.75 * ease(clamp01(kBox * 1.6)) * S.photo * inBox; burgerSh.visible = box.visible && burgerSh.material.opacity > 0.01;
     const fly = (p, from) => [lerp(from[0], p[0], itE), lerp(from[1], p[1], itE), p[2]];
     const FROM = { fries: [-16, 9], dipO: [-6, 16], dipD: [8, 15], shake: [17, 4] }, SPIN = { fries: -0.5, dipO: 0.3, dipD: -0.2, shake: 0.4 };
-    const swap = ease(clamp01((kBox - 0.35) / 0.4)); // fries tray → loose heap while it drops into the box
+    const swap = ease(clamp01((kBox - 0.22) / 0.2)); // fries tray → loose heap while it drops into the box
     for (const k of ['fries', 'dipO', 'dipD', 'shake']) {
       const o = FOOD[k]; const roll = (1 - itE) * (k === 'shake' ? -0.5 : 0.6);
       place3(o, fly(it[k], FROM[k]), SLOT[k], kBox, roll, SPIN[k]);
@@ -574,12 +585,12 @@ async function initAnim() {
         if (o.userData.boxLayers) lop *= o.userData.boxLayers.includes(i) ? swap : 1 - swap;
         // face the camera, with a slight per-layer yaw + roll that settles as the item lands
         const settle = 1 - ease(clamp01(kBox));
-        eF.set(0, (u.yaw + SPIN[k] * 0.5) * (0.35 + settle) + mouse.x * 0.05, roll * 0.9 * settle + roll * 0.1); qF.setFromEuler(eF);
+        eF.set(0, (u.yaw + SPIN[k] * 0.5) * (0.35 + settle) + Math.max(-0.18, box.rotation.y * 0.35) * ease(clamp01(kBox * 1.4)) + 0.06 + mouse.x * 0.05, roll * 0.9 * settle + roll * 0.1); qF.setFromEuler(eF);
         m.quaternion.copy(qInv).multiply(qF);
         m.position.set(u.dx, 0, u.dz);
-        m.material.opacity = op * lop; m.visible = m.material.opacity > 0.003;
+        m.material.opacity = op * lop; m.visible = m.material.opacity > 0.003; syncSlices(m, m.material.opacity);
       });
-      o.userData.sh.material.opacity = 0.7 * op * shK; o.userData.sh.visible = o.userData.sh.material.opacity > 0.01;
+      o.userData.sh.material.opacity = 0.7 * op * ease(clamp01(kBox * 1.6)); o.userData.sh.visible = o.userData.sh.material.opacity > 0.01;
     }
     // key light + shadow frustum follow the box
     if (box.visible || photo.visible) {
