@@ -36,6 +36,13 @@ function jitter(geo, amt, freq = 7, yMin = -1e9, ph = 0) {
   }
   geo.computeVertexNormals(); return geo;
 }
+function lacy(geo, ph) { // smash-burger edge: irregular, crispy lace + slightly domed crust
+  const p = geo.attributes.position;
+  for (let i = 0; i < p.count; i++) { const x = p.getX(i), y = p.getY(i), z = p.getZ(i); const r = Math.hypot(x, z); if (r < 1e-4) { p.setY(i, y + (y > 0 ? 0.008 : 0)); continue; }
+    const a = Math.atan2(z, x); const n = Math.sin(a * 5 + ph) * 0.5 + Math.sin(a * 11.3 + ph * 2) * 0.3 + Math.sin(a * 23.7 + 1.7 + Math.sin(a * 3) * 2) * 0.2; const k = 1 + 0.055 * n + (y > 0 ? 0.012 : -0.012);
+    p.setXYZ(i, x * k, y * (1 - 0.25 * Math.max(0, n)), z * k); } // thinner, crispier where the edge spreads
+  geo.computeVertexNormals(); return geo;
+}
 const shadowed = (m) => { m.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } }); return m; };
 
 /* ---------------- shared materials ---------------- */
@@ -49,8 +56,10 @@ export function foodMats() {
   });
   const bunCut = ctex(256, 256, (g, w, h) => { const gr = g.createRadialGradient(w / 2, h / 2, 10, w / 2, h / 2, w / 2); gr.addColorStop(0, '#E7C38A'); gr.addColorStop(0.75, '#D59A52'); gr.addColorStop(1, '#A9601F'); g.fillStyle = gr; g.fillRect(0, 0, w, h); speckle(g, w, h, 700, '#8c4f1a', 0.6, 2, 0.1, 0.35); });
   const bunBot = ctex(256, 128, (g, w, h) => { const gr = g.createLinearGradient(0, h, 0, 0); gr.addColorStop(0, '#B86A2A'); gr.addColorStop(0.5, '#D99A50'); gr.addColorStop(0.9, '#C98034'); gr.addColorStop(1, '#9A5520'); g.fillStyle = gr; g.fillRect(0, 0, w, h); speckle(g, w, h, 300, '#6e320e', 0.6, 2, 0.1, 0.3); });
-  const patty = ctex(512, 256, (g, w, h) => { g.fillStyle = '#3b2314'; g.fillRect(0, 0, w, h); speckle(g, w, h, 2600, '#170b05', 1, 4.2, 0.3, 0.85); speckle(g, w, h, 1500, '#70421f', 0.8, 3, 0.3, 0.7); speckle(g, w, h, 400, '#9a6233', 0.6, 1.6, 0.4, 0.8); }, true, true);
-  const pattyB = ctex(256, 128, (g, w, h) => { g.fillStyle = '#808080'; g.fillRect(0, 0, w, h); speckle(g, w, h, 1800, '#000', 1, 3.5, 0.3, 0.9); speckle(g, w, h, 1200, '#fff', 0.8, 3, 0.3, 0.9); }, false, true);
+  const patty = ctex(512, 256, (g, w, h) => { // smash crust: near-black char, lacy brown crust, a few seared highlights
+    g.fillStyle = '#24130a'; g.fillRect(0, 0, w, h); speckle(g, w, h, 3200, '#0b0503', 1.2, 5, 0.4, 0.95); speckle(g, w, h, 1600, '#4a2612', 1, 4, 0.35, 0.8);
+    speckle(g, w, h, 700, '#7a4220', 0.6, 2.2, 0.4, 0.85); speckle(g, w, h, 160, '#a9652f', 0.5, 1.4, 0.5, 0.9); }, true, true);
+  const pattyB = ctex(256, 128, (g, w, h) => { g.fillStyle = '#808080'; g.fillRect(0, 0, w, h); speckle(g, w, h, 2600, '#000', 1, 4.5, 0.4, 1); speckle(g, w, h, 1800, '#fff', 0.8, 3.5, 0.4, 1); }, false, true);
   const fry = ctex(64, 256, (g, w, h) => { const gr = g.createLinearGradient(0, 0, w, 0); gr.addColorStop(0, '#C9781F'); gr.addColorStop(0.25, '#F1BC52'); gr.addColorStop(0.75, '#EDB24A'); gr.addColorStop(1, '#C26F1C'); g.fillStyle = gr; g.fillRect(0, 0, w, h); speckle(g, w, h, 160, '#a85a14', 0.4, 1.4, 0.15, 0.4); speckle(g, w, h, 90, '#fff6d8', 0.3, 0.9, 0.3, 0.7); });
   const swirl = ctex(256, 256, (g, w, h) => { g.fillStyle = '#808080'; g.fillRect(0, 0, w, h); g.strokeStyle = '#c8c8c8'; g.lineWidth = 7; g.beginPath(); for (let a = 0; a < 26; a += 0.05) { const r = 4 + a * 4.4; g.lineTo(w / 2 + Math.cos(a) * r, h / 2 + Math.sin(a) * r); } g.stroke(); }, false);
   MM = {
@@ -59,8 +68,8 @@ export function foodMats() {
     bunBot: new MeshStandardMaterial({ map: bunBot, bumpMap: crumb, bumpScale: 0.8, roughness: 0.68 }),
     bunCut: new MeshStandardMaterial({ map: bunCut, bumpMap: crumb, bumpScale: 1.4, roughness: 0.9 }),
     seed: new MeshStandardMaterial({ color: '#F2E3BF', roughness: 0.55 }),
-    patty: new MeshStandardMaterial({ map: patty, bumpMap: pattyB, bumpScale: 2.4, roughness: 0.8 }),
-    cheese: new MeshPhysicalMaterial({ color: '#F7B21E', roughness: 0.3, clearcoat: 0.45, clearcoatRoughness: 0.2, sheen: 0.35, sheenColor: new Color('#ffd27a'), side: DoubleSide }),
+    patty: new MeshPhysicalMaterial({ map: patty, bumpMap: pattyB, bumpScale: 4.5, roughness: 0.62, clearcoat: 0.25, clearcoatRoughness: 0.5 }),
+    cheese: new MeshPhysicalMaterial({ color: '#F4A51A', roughness: 0.3, clearcoat: 0.45, clearcoatRoughness: 0.2, sheen: 0.35, sheenColor: new Color('#ffd27a'), side: DoubleSide }),
     onion: new MeshPhysicalMaterial({ color: '#7A3E15', roughness: 0.35, clearcoat: 0.7, clearcoatRoughness: 0.25 }),
     sauce: new MeshPhysicalMaterial({ color: '#E9975A', roughness: 0.22, clearcoat: 0.9, clearcoatRoughness: 0.15 }),
     lettuce: new MeshPhysicalMaterial({ color: '#4E8A26', roughness: 0.45, clearcoat: 0.3, side: DoubleSide, sheen: 0.4, sheenColor: new Color('#d8f5a0') }),
@@ -69,7 +78,7 @@ export function foodMats() {
     ceramic: new MeshPhysicalMaterial({ color: '#F3F1EC', roughness: 0.18, clearcoat: 1, clearcoatRoughness: 0.08 }),
     dipO: new MeshPhysicalMaterial({ color: '#E8883A', roughness: 0.12, clearcoat: 1, clearcoatRoughness: 0.05, bumpMap: swirl, bumpScale: 1.2 }),
     dipD: new MeshPhysicalMaterial({ color: '#5C1B0C', roughness: 0.1, clearcoat: 1, clearcoatRoughness: 0.05, bumpMap: swirl, bumpScale: 1.2 }),
-    cream: new MeshPhysicalMaterial({ color: '#EFE7DD', roughness: 0.62, bumpMap: crumb, bumpScale: 1.6, sheen: 0.4, sheenColor: new Color('#ffffff') }),
+    cream: new MeshPhysicalMaterial({ color: '#D8CCC2', roughness: 0.62, bumpMap: crumb, bumpScale: 1.6, sheen: 0.4, sheenColor: new Color('#ffffff') }),
     oreo: new MeshStandardMaterial({ color: '#1C1512', roughness: 0.75, bumpMap: crumb, bumpScale: 2 }),
     clear: new MeshPhysicalMaterial({ color: '#ffffff', roughness: 0.05, metalness: 0, clearcoat: 1, transparent: true, opacity: 0.12, depthWrite: false, side: DoubleSide }),
     straw: new MeshPhysicalMaterial({ color: '#F06A10', roughness: 0.28, clearcoat: 0.7 }),
@@ -79,17 +88,17 @@ export function foodMats() {
 }
 
 /* ---------------- burger layers (each: Group, origin bottom centre, userData.h thickness) ---------------- */
-function cheeseSlice(M, size, droop, R, rot) {
-  const g = new PlaneGeometry(size, size, 30, 30); g.rotateX(-Math.PI / 2);
+function cheeseSlice(M, size, droop, R, rot) { // smooth melt: hugs the patty top, rolls over the rim and hangs in soft drips
+  const g = new PlaneGeometry(size, size, 64, 64); g.rotateX(-Math.PI / 2);
   const p = g.attributes.position;
   for (let i = 0; i < p.count; i++) {
-    let x = p.getX(i), z = p.getZ(i); const r = Math.hypot(x, z); let yy = 0.006;
-    if (r > R) { // melted: folds down over the patty edge, the corners drip further
-      const over = r - R, k = R / r, corner = Math.pow(Math.max(Math.abs(x), Math.abs(z)) / (size / 2), 5);
-      yy = -Math.min(over * 1.3, droop * (0.6 + corner * 0.5)); const pull = 1 - Math.min(1, over * 1.6) * 0.6;
-      x = x * (k + (1 - k) * pull * 0.55); z = z * (k + (1 - k) * pull * 0.55);
+    let x = p.getX(i), z = p.getZ(i); const r = Math.hypot(x, z), a = Math.atan2(z, x); let yy = 0.008 - r * r * 0.012;
+    if (r > R) {
+      const over = r - R; const drip = droop * (0.62 + 0.22 * Math.sin(a * 4 + rot * 5) + 0.12 * Math.sin(a * 9 + rot));
+      const t = 1 - Math.exp(-over * 11); // eased fold: no crease at the rim
+      yy -= drip * t; const nr = R + over * (0.32 - 0.22 * t) + 0.012 * t; x *= nr / r; z *= nr / r;
     }
-    yy += Math.sin(x * 11) * Math.cos(z * 9) * 0.006; p.setXYZ(i, x, yy, z);
+    p.setXYZ(i, x, yy, z);
   }
   g.computeVertexNormals(); const m = new Mesh(g, M.cheese); m.rotation.y = rot; return m;
 }
@@ -124,7 +133,7 @@ export function burgerLayers() {
   }
   const onions = L(0.08, on);
   // patties with melted American cheese draping over
-  const pattyL = (rot) => L(0.165, at(new Mesh(jitter(new CylinderGeometry(0.58, 0.56, 0.15, 56, 3), 0.05, 8, -1e9, rot * 3), M.patty), 0.075), at(cheeseSlice(M, 1.0, 0.2, 0.53, rot), 0.15));
+  const pattyL = (rot) => L(0.165, at(new Mesh(lacy(new CylinderGeometry(0.59, 0.56, 0.15, 96, 3), rot * 3), M.patty), 0.075), at(cheeseSlice(M, 1.04, 0.16, 0.54, rot), 0.152));
   const p1 = pattyL(0.35), p2 = pattyL(-0.45);
   // bottom bun, toasted cut side up
   const bot = L(0.19, new Mesh(lathe(puck(0.53, 0.19, 0.07)), M.bunBot), at(new Mesh(new CircleGeometry(0.5, 40).rotateX(-Math.PI / 2), M.bunCut), 0.191));
@@ -152,13 +161,13 @@ export function buildFries3D() {
   const wall = (w, h, d, x, y, z) => { const m = new Mesh(new BoxGeometry(w, h, d), M.tray); m.position.set(x, y, z); tray.add(m); };
   wall(W, t, D, 0, t / 2, 0); wall(W, H, t, 0, H / 2, D / 2); wall(W, H * 0.8, t, 0, H * 0.4, -D / 2); wall(t, H, D, W / 2, H / 2, 0); wall(t, H, D, -W / 2, H / 2, 0);
   // slightly curved, square-section stick with chamfered corners
-  const geo = new BoxGeometry(0.085, 1, 0.078, 1, 6, 1); geo.translate(0, 0.5, 0);
+  const geo = new BoxGeometry(0.11, 1, 0.1, 2, 6, 2); geo.translate(0, 0.5, 0);
   { const p = geo.attributes.position; for (let i = 0; i < p.count; i++) { const y = p.getY(i); p.setX(i, p.getX(i) * (0.92 + 0.08 * Math.sin(y * 3)) + Math.sin(y * Math.PI) * 0.035); p.setZ(i, p.getZ(i) * (0.95 + 0.05 * Math.cos(y * 4))); } geo.computeVertexNormals(); }
-  const N = 28; const fr = new InstancedMesh(geo, M.fry, N); const o = new Object3D();
+  const N = 17; const fr = new InstancedMesh(geo, M.fry, N); const o = new Object3D();
   for (let i = 0; i < N; i++) {
-    const Lh = rr(0.5, 0.82); const x = rr(-W / 2 + 0.06, W / 2 - 0.06), z = rr(-D / 2 + 0.06, D / 2 - 0.06);
+    const Lh = rr(0.6, 0.92); const x = rr(-W / 2 + 0.06, W / 2 - 0.06), z = rr(-D / 2 + 0.06, D / 2 - 0.06);
     o.position.set(x, 0.02, z);
-    const lean = rr(0.15, 0.75), dir = Math.atan2(z, x) + rr(-0.6, 0.6); // leaning outwards, a loose golden bunch
+    const lean = rr(0.35, 0.8), dir = (i % 2 ? 0.6 : -2.4) + rr(-0.7, 0.7); // piled at a steep slant, crossing like z024 // leaning outwards, a loose golden bunch
     o.rotation.set(Math.sin(dir) * lean, rnd() * 6.28, -Math.cos(dir) * lean); o.scale.set(rr(0.8, 1.25), Lh, rr(0.8, 1.25)); o.updateMatrix(); fr.setMatrixAt(i, o.matrix);
     fr.setColorAt(i, new Color().setHSL(0.088 + rr(-0.012, 0.01), rr(0.85, 1), rr(0.56, 0.7)));
   }
@@ -183,8 +192,8 @@ export function buildDip3D(dark) {
 export function buildShake3D(badgeTex) {
   const M = foodMats(); seed = 3; const g = new Group();
   const R0 = 0.23, R1 = 0.29, H = 0.74;
-  const body = ctex(512, 256, (gg, w, h) => { gg.fillStyle = '#E9DAC6'; gg.fillRect(0, 0, w, h); speckle(gg, w, h, 1400, '#2a1a12', 0.8, 3.2, 0.3, 0.8);
-    gg.fillStyle = '#3A1C0F'; for (let i = 0; i < 22; i++) { const x = rnd() * w, len = rr(0.35, 0.9) * h, wd = rr(9, 20); gg.globalAlpha = rr(0.75, 1); gg.beginPath(); gg.moveTo(x - wd / 2, 0); gg.bezierCurveTo(x - wd, len * 0.4, x + wd * 0.3, len * 0.7, x, len); gg.bezierCurveTo(x + wd * 0.6, len * 0.7, x + wd, len * 0.3, x + wd / 2, 0); gg.fill(); }
+  const body = ctex(512, 256, (gg, w, h) => { gg.fillStyle = '#C9AE9F'; gg.fillRect(0, 0, w, h); speckle(gg, w, h, 1400, '#3a2219', 0.8, 3.2, 0.3, 0.8); speckle(gg, w, h, 500, '#d8c4b6', 0.8, 2.4, 0.2, 0.5);
+    gg.fillStyle = '#3B170B'; for (let i = 0; i < 22; i++) { const x = rnd() * w, len = rr(0.3, 0.9) * h, wd = rr(8, 20); gg.globalAlpha = rr(0.75, 1); gg.beginPath(); gg.moveTo(x - wd / 2, 0); gg.bezierCurveTo(x - wd, len * 0.4, x + wd * 0.3, len * 0.7, x, len); gg.bezierCurveTo(x + wd * 0.6, len * 0.7, x + wd, len * 0.3, x + wd / 2, 0); gg.fill(); }
     gg.globalAlpha = 1; gg.fillRect(0, 0, w, 12); });
   const shakeM = new MeshPhysicalMaterial({ map: body, roughness: 0.55, sheen: 0.2 });
   g.add(new Mesh(new CylinderGeometry(R1 - 0.012, R0 - 0.012, H - 0.02, 40, 1, false), shakeM)).position.y = H / 2;

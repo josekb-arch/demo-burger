@@ -238,7 +238,7 @@ async function initAnim() {
     if (document.readyState === 'complete') later(); else addEventListener('load', later, { once: true });
   });
   const yieldMain = () => new Promise(r => setTimeout(r, 0));
-  const THREE = await import('./vendor/three-app.js?v=7');
+  const THREE = await import('./vendor/three-app.js?v=8');
   const canvas = $('#gl');
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'high-performance' });
   renderer.setClearColor(0x000000, 0);
@@ -265,11 +265,11 @@ async function initAnim() {
   const b3 = new THREE.Group(); burger.add(b3); b3.scale.setScalar(U);
   const BL = THREE.burgerLayers(); await yieldMain();
   const layers = [BL.top, BL.sauce, BL.onions, BL.p1, BL.p2, BL.bot]; // label order, top → bottom
-  const extras = [BL.lettuce, BL.tomato]; // only on the assembled combo burger (z020/z024)
-  const ORDER3 = [BL.bot, BL.lettuce, BL.tomato, BL.p2, BL.p1, BL.onions, BL.sauce, BL.top]; // lettuce + tomato on the heel, so the onions show under the crown like z024 // bottom → top
+  const extras = []; // v8: no lettuce/tomato, like z020/z024
+  const ORDER3 = [BL.bot, BL.p2, BL.p1, BL.onions, BL.sauce, BL.top]; // bottom → top
   ORDER3.forEach(m => b3.add(m)); b3.visible = false;
   const R3 = [0.56, 0.53, 0.56, 0.6, 0.6, 0.53]; // label anchor radius per layer (box units)
-  const GAP = 1.58 / U; // exploded gap per unit of S.explode
+  const GAP = 0.95 / U; // v8: tighter, like z016 // exploded gap per unit of S.explode
   function stackLayout(e, lt) { // y (bottom) per layer in b3 units; returns total height
     let y = 0; const out = new Map();
     ORDER3.forEach((m, j) => { const ex = extras.includes(m); const h = m.userData.h * (ex ? lt : 1); out.set(m, y); y += h + (ex ? 0 : (j < ORDER3.length - 1 ? GAP * e : 0)); });
@@ -373,7 +373,7 @@ async function initAnim() {
   await yieldMain();
   const blob = canvasTex(256, 128, (g, w, h) => { const gr = g.createRadialGradient(w / 2, h / 2, 2, w / 2, h / 2, w / 2); gr.addColorStop(0, 'rgba(0,0,0,.85)'); gr.addColorStop(0.55, 'rgba(0,0,0,.4)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.setTransform(1, 0, 0, 0.5, 0, h / 4); g.fillStyle = gr; g.fillRect(0, 0, w, w); });
   // v7: real 3D combo food — geometry + PBR materials (src/food3d.js), soft contact blob + real shadow-map shadows
-  const cupBadge = canvasTex(256, 256, (g) => { badge(g, 128, 128, 104); });
+  const cupBadge = canvasTex(256, 256, (g) => { badge(g, 128, 128, 100, 'rgba(225,210,200,0.22)', '#1e120c'); g.strokeStyle = '#1e120c'; g.lineWidth = 5; g.beginPath(); g.arc(128, 128, 104, 0, 7); g.stroke(); }); // dark ink stamp like z024
   function food(o, shW) {
     const sh = new THREE.Mesh(new THREE.PlaneGeometry(shW, shW * 0.8), new THREE.MeshBasicMaterial({ map: blob, transparent: true, depthWrite: false, opacity: 0.55 }));
     sh.rotation.x = -Math.PI / 2; sh.position.y = 0.004; sh.renderOrder = 3; o.add(sh); o.userData.sh = sh; scene.add(o); o.visible = false; return o;
