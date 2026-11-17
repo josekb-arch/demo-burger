@@ -192,7 +192,7 @@ main:focus{outline:none}
 @media (min-aspect-ratio:1/1){
   .anim .t-hero{left:clamp(16px,1.8vw,32px);top:calc(var(--navh) + 16vh);bottom:auto;display:block;max-width:30vw}
   .anim .t-hero .big{font-size:clamp(44px,4.6vw,88px)}
-  .anim .t-smash{right:auto;left:59vw;top:calc(var(--navh) + 17vh);bottom:auto;display:block;width:38vw}
+  .anim .t-smash{right:auto;left:61.5vw;top:calc(var(--navh) + 17vh);bottom:auto;display:block;width:38vw}
   .anim .t-stack{left:clamp(16px,3vw,48px);bottom:16vh;width:min(34vw,520px)}
   .anim .t-shakes{left:clamp(16px,2vw,36px);top:calc(var(--navh) + 30vh);width:min(36vw,560px)}
   .anim .t-smash .big,.anim .t-stack .big,.anim .t-shakes .big{font-size:clamp(40px,4.8vw,92px);white-space:nowrap}

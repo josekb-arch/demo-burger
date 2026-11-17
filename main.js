@@ -92,7 +92,7 @@ async function initAnim() {
       L.reg = {
         // video framing: the burger stays centred (~47% of the width) from the hero to the stack
         hero: { x0: L.vw * 0.31, x1: L.vw * 0.63, y0: top, y1: bot },
-        smash: { x0: L.vw * 0.3, x1: L.vw * 0.64, y0: top + (L.vh - top) * 0.05, y1: L.vh * 0.8 },
+        smash: { x0: L.vw * 0.26, x1: L.vw * 0.6, y0: top + (L.vh - top) * 0.05, y1: L.vh * 0.8 },
         stack: { x0: L.vw * 0.31, x1: L.vw * 0.65, y0: top - 2, y1: L.vh * 0.97 }, // labels sit right of x1
         combo: { x0: L.vw * 0.12, x1: L.vw * 0.88, y0: top + 20, y1: bot - 20 },
         boxOpen: { x0: L.vw * 0.09, x1: L.vw * 0.78, y0: top + (L.vh - top) * 0.3, y1: L.vh * 0.95 }, // body only; the open lid runs off the top like the video
