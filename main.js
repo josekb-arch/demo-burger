@@ -95,7 +95,7 @@ async function initAnim() {
         smash: { x0: L.vw * 0.26, x1: L.vw * 0.6, y0: top + (L.vh - top) * 0.05, y1: L.vh * 0.8 },
         stack: { x0: L.vw * 0.31, x1: L.vw * 0.65, y0: top - 2, y1: L.vh * 0.97 }, // labels sit right of x1
         combo: { x0: L.vw * 0.07, x1: L.vw * 0.6, y0: top + 30, y1: bot - 24 }, // video: the reassembled set sits left of centre
-        boxOpen: { x0: L.vw * 0.06, x1: L.vw * 0.74, y0: top + (L.vh - top) * 0.24, y1: L.vh * 0.97 }, // body only; the open lid runs off the top like the video
+        boxOpen: { x0: L.vw * 0.05, x1: L.vw * 0.72, y0: top + 6, y1: L.vh - 10 }, // whole box incl. the open lid, kept below the nav
         boxFront: { x0: L.vw * 0.1, x1: L.vw * 0.9, y0: top + (L.vh - top) * 0.2, y1: L.vh * 0.78 },
       };
     } else {
@@ -105,7 +105,7 @@ async function initAnim() {
         smash: above('smash'),
         stack: { x0: 12, x1: L.vw - 148, y0: top, y1: r.stack.y - 16 },
         combo: above('combo'),
-        boxOpen: { x0: 8, x1: L.vw - 8, y0: top + (r.combo.y - top) * 0.3, y1: r.combo.y - 12 },
+        boxOpen: { x0: 8, x1: L.vw - 8, y0: top + 4, y1: r.combo.y - 10 },
         boxFront: { x0: 14, x1: L.vw - 14, y0: r.shakes.y + r.shakes.h + 18, y1: bot - 10 },
       };
     }
@@ -168,7 +168,11 @@ async function initAnim() {
     .to(S, { seg: 2, duration: 0.8 }, 2.7)
     .to(labelsEl, { autoAlpha: 1, duration: 0.35 }, 3.2);
   show(panels.stack, 3.15);
-  leave(panels.stack, 4.15);
+  // like the video (z017): the list goes first, the THE STACK title keeps drifting up while the combo set assembles
+  { const sp = panels.stack; const rest = [$('.num', sp), $('.stack-list', sp)].filter(Boolean);
+    tl.to(rest, { autoAlpha: 0, duration: 0.25, ease: 'none' }, 4.15)
+      .to(sp, { y: () => -L.vh * (L.portrait ? 0.08 : 0.5), duration: 1.0, ease: 'none' }, 4.15)
+      .to(sp, { autoAlpha: 0, duration: 0.2, ease: 'none' }, 5.08); }
   tl.to(labelsEl, { autoAlpha: 0, duration: 0.25 }, 4.15)
     .to(S, { explode: 0, duration: 0.7 }, 4.3)
     .to(S, { photo: 1, duration: 0.15 }, 4.85)
@@ -234,7 +238,7 @@ async function initAnim() {
     if (document.readyState === 'complete') later(); else addEventListener('load', later, { once: true });
   });
   const yieldMain = () => new Promise(r => setTimeout(r, 0));
-  const THREE = await import('./vendor/three-app.js?v=3');
+  const THREE = await import('./vendor/three-app.js?v=4');
   const canvas = $('#gl');
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'high-performance' });
   renderer.setClearColor(0x000000, 0);
@@ -269,7 +273,20 @@ async function initAnim() {
   const layers = LAY.map((l, i) => {
     const m = new THREE.Mesh(new THREE.PlaneGeometry(l[3] / 100, l[4] / 100), planeMat(layerTex[i]));
     m.userData.base = { x: (l[1] + l[3] / 2 - CX) / 100, y: -(l[2] + l[4] / 2 - CY) / 100 };
-    m.renderOrder = 10 + i; burger.add(m); return m;
+    m.renderOrder = 10 + i; burger.add(m);
+    // volume: a darker "edge" copy just below (thickness) + a soft silhouette shadow falling on the layer underneath
+    const img = layerTex[i].image, sw = 96, shh = Math.max(8, Math.round(96 * img.height / img.width));
+    const sc = document.createElement('canvas'); sc.width = sw + 24; sc.height = shh + 24; const sg = sc.getContext('2d');
+    sg.drawImage(img, 12, 12, sw, shh); sg.globalCompositeOperation = 'source-in'; sg.fillStyle = '#1b0d04'; sg.fillRect(0, 0, sc.width, sc.height);
+    const bl = document.createElement('canvas'); bl.width = 30; bl.height = Math.max(4, Math.round(30 * sc.height / sc.width)); bl.getContext('2d').drawImage(sc, 0, 0, bl.width, bl.height);
+    const st = new THREE.CanvasTexture(bl); st.colorSpace = THREE.SRGBColorSpace;
+    const pw = l[3] / 100, ph = l[4] / 100;
+    const sh = new THREE.Mesh(new THREE.PlaneGeometry(pw * 1.12, ph * 1.25), new THREE.MeshBasicMaterial({ map: st, transparent: true, depthWrite: false, opacity: 0 }));
+    sh.position.set(0.04, -ph * 0.32, -0.06); sh.renderOrder = 9; m.add(sh);
+    const edge = new THREE.Mesh(m.geometry, new THREE.MeshBasicMaterial({ map: layerTex[i], transparent: true, depthWrite: false, toneMapped: false, color: 0x7a5030 }));
+    edge.position.set(0, -Math.min(0.055, ph * 0.075), -0.012); edge.renderOrder = 9; m.add(edge);
+    m.userData.sh = sh; m.userData.edge = edge;
+    return m;
   });
   // shadow under the burger on the paper
   const shCan = document.createElement('canvas'); shCan.width = 256; shCan.height = 64;
@@ -321,8 +338,15 @@ async function initAnim() {
     }
     return tw;
   }
+  function tagline(g, x, ty, size, tw) { // a second "MADE FRESH. MADE BOLD." rule, as on the video's closed box
+    g.fillStyle = OR; g.font = `${size * 0.2}px Anton`; g.letterSpacing = `${size * 0.03}px`; g.textAlign = 'center';
+    const txt = 'MADE FRESH. MADE BOLD.'; const w2 = g.measureText(txt).width; g.fillText(txt, x + tw / 2, ty);
+    g.fillRect(x - size * 0.6, ty - size * 0.08, tw / 2 - w2 / 2 + size * 0.45, size * 0.035);
+    g.fillRect(x + tw / 2 + w2 / 2 + size * 0.15, ty - size * 0.08, tw / 2 - w2 / 2, size * 0.035);
+    starPath(g, x + tw + size * 0.35, ty - size * 0.07, size * 0.08); g.fill(); g.letterSpacing = '0px';
+  }
   const black = (g, w, h) => { const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#1a1a1a'); gr.addColorStop(1, '#0b0b0b'); g.fillStyle = gr; g.fillRect(0, 0, w, h); };
-  const frontTex = canvasTex(2048, 608, (g, w, h) => { black(g, w, h); badge(g, 300, 290, 205); wordmark(g, 600, 300, 220, true); g.fillStyle = OR; g.fillRect(0, h - 10, w, 10); });
+  const frontTex = canvasTex(2048, 608, (g, w, h) => { black(g, w, h); badge(g, 300, 270, 200); const tw = wordmark(g, 600, 250, 210, true); tagline(g, 600, 250 + 210 * 1.18, 210, tw); g.fillStyle = OR; g.fillRect(0, h - 10, w, 10); });
   const lidInTex = canvasTex(2048, 1280, (g, w, h) => { black(g, w, h); badge(g, 380, 330, 220); wordmark(g, 720, 380, 240, true); g.fillStyle = OR; g.fillRect(120, 1000, 1500, 8); starPath(g, 1700, 1004, 26); g.fill(); g.fillRect(1760, 1000, 200, 8); });
   const lidTopTex = canvasTex(2048, 1280, (g, w, h) => { black(g, w, h); badge(g, 1024, 520, 330); g.fillStyle = OR; g.fillRect(200, 1000, 1648, 10); g.fillRect(200, 1040, 1648, 10); });
   const floorTex = canvasTex(1024, 640, (g, w, h) => {
@@ -357,32 +381,37 @@ async function initAnim() {
   bsh.rotation.x = -Math.PI / 2; bsh.position.y = 0.002; bsh.renderOrder = 2; box.add(bsh);
   // slots inside the box (box-local, bottom anchored) + widths in box units
   const SLOT = { photo: [-0.89, INS.burger, 0.06, 1.4], burger: [-0.89, INS.burger, 0.06, 0], fries: [0.3, INS.fries, -0.46, 0], dipO: [0.12, INS.dips, 0.46, 0], dipD: [0.5, INS.dips, 0.66, 0], shake: [1.14, INS.shake, 0.04, 0] };
-  const BOX_OPEN = { rx: 0.62, ry: -0.3, lid: -1.74 }, BOX_FRONT = { rx: 0.2, ry: 0.0, lid: 0 };
+  const BOX_OPEN = { rx: 0.46, ry: -0.26, lid: -1.74 }, BOX_FRONT = { rx: 0.09, ry: 0.0, lid: 0 }; // open: 3/4 view like the video; closed: straight-on front
 
   await yieldMain();
-  /* ---------- real 3D food (geometry + PBR, no billboards) ---------- */
-  const FM = THREE.mats();
-  const trayMat = M({ color: 0x151515, roughness: 0.72 }); const lineMat = new THREE.MeshBasicMaterial({ color: OR });
-  const [shakeTex, sauceTex] = await Promise.all([tex('assets/img/i_shake.webp'), tex('assets/img/i_sauce.webp')]);
-  const burger3 = THREE.wrapGroup(THREE.photoLathe(photoTex.image, photoTex, { unit: 1.1, step: 4, win: 3, mat: { roughness: 0.5 } }));
-  const fries = THREE.buildFries(FM, trayMat, lineMat);
-  // dips: photo cup + a glossy sauce surface you can see from above
-  const dip = (img, t, col, rough) => { const m = THREE.photoLathe(img, t, { unit: 0.4, step: 3, win: 1, open: 0.0, mat: { roughness: 0.3, side: 2 } }); m.geometry.dispose(); const m2 = THREE.photoLathe(img, t, { unit: 0.4, step: 3, win: 1, open: 0.04, mat: { roughness: 0.3, side: 2 } }); m2.userData.radiusAt = m.userData.radiusAt; m2.userData.h = m.userData.h; m2.userData.w = m.userData.w; const h = m.userData.h * 0.8, r = m.userData.radiusAt(h) * 0.97;
-    const top = new THREE.Mesh(new THREE.CircleGeometry(r, 40), new THREE.MeshStandardMaterial({ color: col, roughness: rough, metalness: 0 })); top.rotation.x = -Math.PI / 2; top.position.y = h; top.receiveShadow = true;
-    const dollop = new THREE.Mesh(new THREE.SphereGeometry(r * 0.35, 20, 10), top.material); dollop.scale.y = 0.35; dollop.position.set(r * 0.15, h, -r * 0.1);
-    return THREE.wrapGroup(m2, [top, dollop]); };
-  const dipO = dip(sauceTex.image, sauceTex, '#E99A55', 0.32);
-  const bbq = THREE.recolor(sauceTex.image, (r, g, b) => (r > g + 22 && g >= b) ? [r * 0.3, g * 0.13, b * 0.08] : null);
-  const dipD = dip(bbq.img, bbq.tex, '#3C140A', 0.14);
-  const shakeM = THREE.photoLathe(shakeTex.image, shakeTex, { unit: 0.64, step: 4, win: 2, mat: { roughness: 0.35 } });
-  const sH = shakeM.userData.h, sR = shakeM.userData.radiusAt(sH * 0.32);
-  const label = new THREE.Mesh(new THREE.CylinderGeometry(sR + 0.006, sR - 0.01, sH * 0.26, 32, 1, true, -0.62, 1.24), new THREE.MeshStandardMaterial({ map: canvasTex(256, 256, (g, w, h) => { g.clearRect(0, 0, w, h); badge(g, w / 2, h / 2, w * 0.42, '#F3EEE6', '#1d1d1d'); g.strokeStyle = '#1d1d1d'; g.lineWidth = 8; g.beginPath(); g.arc(w / 2, h / 2, w * 0.42, 0, 7); g.stroke(); }), transparent: true, roughness: 0.45 }));
-  label.position.y = sH * 0.32;
-  const stw = THREE.straw(); stw.scale.y = 0.8; stw.position.set(-0.05, sH * 0.93, -0.06); stw.rotation.z = 0.28;
-  const shake = THREE.wrapGroup(shakeM, [label, stw]);
-  const FOOD = { burger: burger3, fries, dipO, dipD, shake };
-  burger3.userData.k = 1.3; fries.userData.k = 1.0; shake.userData.k = 1.22; dipO.userData.k = dipD.userData.k = 1.05;
-  for (const k in FOOD) { scene.add(FOOD[k]); FOOD[k].visible = false; }
+  /* ---------- combo food: photographic 2.5D sprites (camera-facing photo layers + contact shadows) ----------
+     Each item is a group anchored at its base. Its photo layers always face the camera (so they read like the video's
+     photography), get a slight per-layer yaw/roll for depth while they fly in, and sit on a soft contact shadow once in the box. */
+  const [pileT, trayT, dipOT, dipDT, shakeT] = await Promise.all(['f_pile', 'f_tray', 'f_dipo', 'f_dipd', 'f_shake'].map(n => tex(`assets/img/${n}.webp?v=4`)));
+  const blob = canvasTex(256, 128, (g, w, h) => { const gr = g.createRadialGradient(w / 2, h / 2, 2, w / 2, h / 2, w / 2); gr.addColorStop(0, 'rgba(0,0,0,.85)'); gr.addColorStop(0.55, 'rgba(0,0,0,.4)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.setTransform(1, 0, 0, 0.5, 0, h / 4); g.fillStyle = gr; g.fillRect(0, 0, w, w); });
+  function layerMesh(t, w, opts = {}) {
+    const ar = t.image.height / t.image.width, h = w * ar;
+    const geo = new THREE.PlaneGeometry(w, h); geo.translate(0, h / 2 - (opts.sink || 0) * h, 0);
+    const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: t, transparent: true, depthWrite: false, toneMapped: false, color: opts.tint || 0xffffff }));
+    if (opts.flip) m.scale.x = -1; m.renderOrder = 40; m.userData = { h, w, dx: opts.dx || 0, dz: opts.dz || 0, yaw: opts.yaw || 0, op: opts.op ?? 1 }; return m;
+  }
+  function sprite(layersDef, shadowW, boxOnly = []) {
+    const g = new THREE.Group(); const L2 = layersDef.map(([t, w, o]) => layerMesh(t, w, o));
+    const sh = new THREE.Mesh(new THREE.PlaneGeometry(shadowW, shadowW * 0.55), new THREE.MeshBasicMaterial({ map: blob, transparent: true, depthWrite: false, opacity: 0 }));
+    sh.rotation.x = -Math.PI / 2; sh.position.y = 0.006; sh.renderOrder = 35; g.add(sh);
+    L2.forEach(m => g.add(m)); scene.add(g); g.visible = false;
+    const top = L2[0]; g.userData = { w: top.userData.w, h: top.userData.h, layers: L2, sh, boxOnly };
+    return g;
+  }
+  // fries: a tray (light scene, like the video's reassembly) that turns into a loose golden heap in the box compartment
+  const fries = sprite([[trayT, 1.0, {}], [pileT, 1.0, { flip: true, dx: -0.06, dz: -0.1, yaw: 0.12, tint: 0xd9c2a0, sink: 0.08 }], [pileT, 0.94, { dx: 0.05, dz: 0.06, yaw: -0.1, sink: 0.06 }]], 0.95);
+  fries.userData.boxLayers = [1, 2]; fries.userData.freeLayers = [0];
+  const dipO = sprite([[dipOT, 1.0, {}]], 1.0), dipD = sprite([[dipDT, 1.0, {}]], 1.0);
+  const shake = sprite([[shakeT, 1.0, {}]], 0.9);
+  const burgerSh = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 0.82), new THREE.MeshBasicMaterial({ map: blob, transparent: true, depthWrite: false, opacity: 0 }));
+  burgerSh.rotation.x = -Math.PI / 2; burgerSh.renderOrder = 35; box.add(burgerSh); burgerSh.position.set(SLOT.photo[0], SLOT.photo[1] + 0.006, SLOT.photo[2]);
+  const FOOD = { fries, dipO, dipD, shake };
+  fries.userData.k = 0.95; shake.userData.k = 0.8; dipO.userData.k = dipD.userData.k = 0.44;
 
   await yieldMain();
   /* ---------- fitting helpers ---------- */
@@ -411,8 +440,8 @@ async function initAnim() {
   }
   // free (light scene) poses around the reassembled burger, burger units: [x, y(centre), width]
   const COMBO_ITEMS = () => L.portrait
-    ? { fries: [-1.8, 3.7, 1.35], dipO: [-0.4, 5.4, 0.95], dipD: [1.2, 4.6, 0.95], shake: [2.15, 1.2, 1.65] }
-    : { fries: [-3.4, 3.7, 1.5], dipO: [-1.0, 5.0, 0.9], dipD: [0.9, 4.7, 0.95], shake: [3.6, 1.6, 2.8] };
+    ? { fries: [-1.9, 3.4, 1.7], dipO: [-0.3, 5.4, 0.95], dipD: [0.7, 5.3, 1.0], shake: [2.15, 1.2, 1.65] }
+    : { fries: [-4.7, 0.9, 3.0], dipO: [-0.6, 5.3, 1.0], dipD: [0.7, 5.2, 1.1], shake: [3.9, 1.5, 3.1] };
   function computeFits() {
     // hero: photo plane width = 4.9 local units; photo centre y = 0 in local space
     const hb = L.heroB; const s0 = (hb.w * wpp) / 4.9; const c = toWorld(hb.cx, hb.base - hb.h / 2);
@@ -431,7 +460,7 @@ async function initAnim() {
   const tmpObj = new THREE.Object3D();
   function boxPoints(st, open) {
     const pts = []; for (const x of [-BW / 2, BW / 2]) for (const y of [0, BH]) for (const z of [-BD / 2, BD / 2]) pts.push([x, y, z]);
-    if (!open) { const a = st.lid; for (const x of [-BW / 2, BW / 2]) for (const zz of [0, BD]) pts.push([x, BH + Math.sin(-a) * zz, -BD / 2 + Math.cos(a) * zz]); }
+    { const a = st.lid; for (const x of [-BW / 2, BW / 2]) for (const zz of [0, BD]) pts.push([x, BH + Math.sin(-a) * zz, -BD / 2 + Math.cos(a) * zz]); }
     return pts;
   }
   function boxBBox(st, pos, s, open) {
@@ -477,6 +506,7 @@ async function initAnim() {
     m.position.set(x, y, z); m.scale.setScalar(Math.max(w, 1e-4));
     m.material.opacity = opacity; m.visible = opacity > 0.003;
   }
+  const qInv = new THREE.Quaternion(), qF = new THREE.Quaternion(), eF = new THREE.Euler();
   const qA = new THREE.Quaternion(), qB = new THREE.Quaternion(), eA = new THREE.Euler(), vS = new THREE.Vector3(), qSlot = new THREE.Quaternion();
   function place3(o, local, slot, k, roll, yaw) {
     // local: [x, yCentre, width] in burger units (free pose); slot: box-local [x, y, z]
@@ -502,6 +532,8 @@ async function initAnim() {
       m.position.set(b.x + Math.sin(i * 2.1) * 0.12 * e, b.y * sp + fl, (2.5 - i) * 0.22 * e);
       m.rotation.z = (i % 2 ? 1 : -1) * 0.05 * e;
       m.material.opacity = layerOp; m.visible = layerOp > 0.003;
+      const vol = clamp01((e - 0.15) / 0.3); m.userData.sh.material.opacity = i === 5 ? 0 : 0.42 * layerOp * vol; m.userData.edge.material.opacity = layerOp * (0.35 + 0.65 * vol);
+      m.rotation.y = (i - 2.5) * 0.035 * e; // tiny per-layer yaw: the layers turn slightly differently as the burger spins → parallax depth
     });
     // shadow on the hero paper
     const shOp = clamp01(1 - S.seg * 2.2);
@@ -516,26 +548,41 @@ async function initAnim() {
       const bx = lerp(o.x, f.x, fr), by = lerp(o.y, f.y, fr), bs = lerp(o.s, f.s, fr);
       box.position.set(bx, lerp(by - L.vh * wpp * 0.9, by, bIn), 0);
       box.scale.setScalar(bs);
-      box.rotation.set(lerp(BOX_OPEN.rx, BOX_FRONT.rx, fr) + mouse.y * 0.04, lerp(BOX_OPEN.ry - 0.5 * (1 - bIn), BOX_FRONT.ry, fr) + mouse.x * 0.08 + (S.spin - 0.72) * 0.35 * (1 - 0.85 * fr), 0);
+      box.rotation.set(lerp(BOX_OPEN.rx, BOX_FRONT.rx, fr) + mouse.y * 0.04 * (1 - fr), lerp(BOX_OPEN.ry - 0.5 * (1 - bIn), BOX_FRONT.ry, fr) + (mouse.x * 0.08 + (S.spin - 0.72) * 0.35) * (1 - fr), 0);
       lidPivot.rotation.x = lerp(BOX_OPEN.lid, BOX_FRONT.lid, ease(clamp01(S.lid)));
       box.updateMatrixWorld(true);
     }
-    // photo burger (light scene) → real 3D burger once it is in the box; 3D fries, dips and shake
+    // burger photo (same plane from the hero) docks in its compartment; fries, dips and shake are 2.5D photo sprites
     const it = COMBO_ITEMS(); const kIt = S.items; const itE = 1 - Math.pow(1 - clamp01(kIt), 3);
     const kBox = clamp01((S.boxIn - 0.12) / 0.88);
     const inBox = S.lid < 0.93 ? 1 : 0, lidHideShake = 1 - clamp01((S.lid - 0.12) / 0.3);
-    const b3 = clamp01((kBox - 0.3) / 0.35); // photo → 3D crossfade while the box flies in
-    placeItem(photo, [0, -2.02 + 0.12 * S.hz * (1 - S.items), 4.9 * (1 + 0.05 * S.hz * (1 - S.items))], SLOT.photo, 1, kBox, S.photo * (1 - b3) * inBox);
-    place3(burger3, [0, -0.1, 4.9 * 1.02], SLOT.burger, kBox, 0, -0.35);
-    THREE.setOpacity(burger3, b3 * inBox * S.photo);
+    placeItem(photo, [0, -2.02 + 0.12 * S.hz * (1 - S.items), 4.9 * (1 + 0.05 * S.hz * (1 - S.items))], SLOT.photo, 1, kBox, S.photo * inBox);
+    const shK = ease(clamp01((kBox - 0.55) / 0.45));
+    burgerSh.material.opacity = 0.75 * shK * S.photo * inBox; burgerSh.visible = box.visible && burgerSh.material.opacity > 0.01;
     const fly = (p, from) => [lerp(from[0], p[0], itE), lerp(from[1], p[1], itE), p[2]];
     const FROM = { fries: [-16, 9], dipO: [-6, 16], dipD: [8, 15], shake: [17, 4] }, SPIN = { fries: -0.5, dipO: 0.3, dipD: -0.2, shake: 0.4 };
+    const swap = ease(clamp01((kBox - 0.35) / 0.4)); // fries tray → loose heap while it drops into the box
     for (const k of ['fries', 'dipO', 'dipD', 'shake']) {
-      place3(FOOD[k], fly(it[k], FROM[k]), SLOT[k], kBox, (1 - itE) * (k === 'shake' ? -0.7 : 0.8), SPIN[k]);
-      THREE.setOpacity(FOOD[k], clamp01(kIt * 2.5) * (k === 'shake' ? lidHideShake : inBox));
+      const o = FOOD[k]; const roll = (1 - itE) * (k === 'shake' ? -0.5 : 0.6);
+      place3(o, fly(it[k], FROM[k]), SLOT[k], kBox, roll, SPIN[k]);
+      // the reassembled light scene shows one dip (the dark one, like the video); the orange one joins in the box
+      let op = (k === 'dipO' ? ease(clamp01((kBox - 0.2) / 0.5)) : clamp01(kIt * 2.5)) * (k === 'shake' ? lidHideShake : inBox);
+      o.visible = op > 0.003; if (!o.visible) continue;
+      qInv.copy(o.quaternion).invert();
+      o.userData.layers.forEach((m, i) => {
+        const u = m.userData; let lop = u.op;
+        if (o.userData.boxLayers) lop *= o.userData.boxLayers.includes(i) ? swap : 1 - swap;
+        // face the camera, with a slight per-layer yaw + roll that settles as the item lands
+        const settle = 1 - ease(clamp01(kBox));
+        eF.set(0, (u.yaw + SPIN[k] * 0.5) * (0.35 + settle) + mouse.x * 0.05, roll * 0.9 * settle + roll * 0.1); qF.setFromEuler(eF);
+        m.quaternion.copy(qInv).multiply(qF);
+        m.position.set(u.dx, 0, u.dz);
+        m.material.opacity = op * lop; m.visible = m.material.opacity > 0.003;
+      });
+      o.userData.sh.material.opacity = 0.7 * op * shK; o.userData.sh.visible = o.userData.sh.material.opacity > 0.01;
     }
     // key light + shadow frustum follow the box
-    if (box.visible || burger3.visible) {
+    if (box.visible || photo.visible) {
       const bs = box.scale.x; sun.target.position.copy(box.position); sun.position.set(box.position.x - 3 * bs, box.position.y + 6 * bs, box.position.z + 5 * bs);
       const sc = sun.shadow.camera, ext = 2.4 * bs;
       if (Math.abs(sc.right - ext) > 1e-3) { sc.left = -ext; sc.right = ext; sc.top = ext; sc.bottom = -ext; sc.near = 0.5 * bs; sc.far = 16 * bs; sc.updateProjectionMatrix(); }
@@ -574,7 +621,7 @@ async function initAnim() {
   window.__bb = () => {
     const out = {}; const bbox = (m) => { if (!m.visible) return null; const b = new THREE.Box3(); m.updateMatrixWorld(true); m.traverseVisible(o => { if (o.isMesh) { o.geometry.computeBoundingBox(); b.union(o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld)); } }); let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9; for (const x of [b.min.x, b.max.x]) for (const y of [b.min.y, b.max.y]) for (const z of [b.min.z, b.max.z]) { const q = toScreen(new THREE.Vector3(x, y, z)); x0 = Math.min(x0, q.x); x1 = Math.max(x1, q.x); y0 = Math.min(y0, q.y); y1 = Math.max(y1, q.y); } return { x0, y0, x1, y1 }; };
     out.layers = layers.some(l => l.visible) ? layers.map(bbox).filter(Boolean) : [];
-    out.photo = bbox(photo); out.burger3 = bbox(burger3); out.fries = bbox(fries); out.dipO = bbox(dipO); out.dipD = bbox(dipD); out.shake = bbox(shake); bsh.visible = false; out.box = box.visible ? bbox(box) : null; bsh.visible = true;
+    out.photo = bbox(photo); out.burger3 = null; out.fries = bbox(fries); out.dipO = bbox(dipO); out.dipD = bbox(dipD); out.shake = bbox(shake); bsh.visible = false; out.box = box.visible ? bbox(box) : null; bsh.visible = true;
     return out;
   };
   window.__S = S;
