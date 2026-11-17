@@ -238,12 +238,12 @@ async function initAnim() {
     if (document.readyState === 'complete') later(); else addEventListener('load', later, { once: true });
   });
   const yieldMain = () => new Promise(r => setTimeout(r, 0));
-  const THREE = await import('./vendor/three-app.js?v=8');
+  const THREE = await import('./vendor/three-app.js?v=9');
   const canvas = $('#gl');
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'high-performance' });
   renderer.setClearColor(0x000000, 0);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
-  renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; renderer.shadowMap.autoUpdate = true;
+  const DPR0 = Math.min(window.devicePixelRatio || 1, 1.5); renderer.setPixelRatio(DPR0); let RES = null;
+  renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFShadowMap; renderer.shadowMap.autoUpdate = false; // v9: cheaper filter, updated every other rendered frame
   const scene = new THREE.Scene();
   await yieldMain();
   scene.environment = THREE.studioEnv(renderer); scene.environmentIntensity = 0.85;
@@ -252,7 +252,7 @@ async function initAnim() {
   camera.position.set(0, 0, 10); camera.updateMatrixWorld(true);
   scene.add(new THREE.HemisphereLight(0xffffff, 0x2a2420, 1.4));
   const sun = new THREE.DirectionalLight(0xfff4e6, 2.4); sun.position.set(-3, 6, 5); scene.add(sun); scene.add(sun.target);
-  sun.castShadow = true; sun.shadow.mapSize.set(1024, 1024); sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.02; sun.shadow.radius = 4;
+  sun.castShadow = true; sun.shadow.mapSize.set(512, 512); sun.shadow.bias = -0.0008; sun.shadow.normalBias = 0.025;
 
   const loader = new THREE.TextureLoader();
   const tex = (u) => new Promise((res, rej) => loader.load(u, t => { t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; res(t); }, undefined, rej));
@@ -268,8 +268,8 @@ async function initAnim() {
   const extras = []; // v8: no lettuce/tomato, like z020/z024
   const ORDER3 = [BL.bot, BL.p2, BL.p1, BL.onions, BL.sauce, BL.top]; // bottom → top
   ORDER3.forEach(m => b3.add(m)); b3.visible = false;
-  const R3 = [0.56, 0.53, 0.56, 0.6, 0.6, 0.53]; // label anchor radius per layer (box units)
-  const GAP = 0.95 / U; // v8: tighter, like z016 // exploded gap per unit of S.explode
+  const R3 = [0.58, 0.7, 0.7, 0.7, 0.72, 0.72]; // v9: one label column clear of the wide bottom patty // label anchor radius per layer (box units)
+  const GAP = 0.68 / U; // v9: compact like z016 // exploded gap per unit of S.explode
   function stackLayout(e, lt) { // y (bottom) per layer in b3 units; returns total height
     let y = 0; const out = new Map();
     ORDER3.forEach((m, j) => { const ex = extras.includes(m); const h = m.userData.h * (ex ? lt : 1); out.set(m, y); y += h + (ex ? 0 : (j < ORDER3.length - 1 ? GAP * e : 0)); });
@@ -346,7 +346,7 @@ async function initAnim() {
   const sideLTex = canvasTex(512, 256, (g, w, h) => { black(g, w, h); g.fillStyle = OR; g.fillRect(0, h * 0.62, w, 8); });
   const M = (o) => new THREE.MeshStandardMaterial({ roughness: 0.62, metalness: 0.05, ...o });
   const mBlack = M({ color: 0x121212 }), mIn = M({ map: wallInTex }), mFloor = M({ map: floorTex });
-  const panel = (w, h, d, mats, x, y, z, parent = box) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mats); m.position.set(x, y, z); m.castShadow = m.receiveShadow = true; parent.add(m); return m; };
+  const panel = (w, h, d, mats, x, y, z, parent = box) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mats); m.position.set(x, y, z); m.receiveShadow = true; parent.add(m); return m; };
   // faces: +x, -x, +y, -y, +z, -z
   panel(BW, T, BD, [mBlack, mBlack, mFloor, mBlack, mBlack, mBlack], 0, T / 2, 0);
   panel(BW, BH, T, [mBlack, mBlack, mBlack, mBlack, M({ map: frontTex }), mIn], 0, BH / 2, BD / 2 - T / 2);
@@ -363,6 +363,17 @@ async function initAnim() {
   const lidPivot = new THREE.Group(); lidPivot.position.set(0, BH, -BD / 2); box.add(lidPivot);
   const lidMats = [mBlack, mBlack, M({ map: lidTopTex }), M({ map: lidInTex }), mBlack, mBlack];
   panel(BW + 0.02, T, BD + 0.02, lidMats, 0, T / 2, BD / 2, lidPivot);
+  // v9 perf: bake the static panels into one mesh per material (multi-material boxes were ~60 draw calls)
+  function bake(parent) {
+    const byMat = new Map();
+    for (const mm of parent.children.filter(c => c.isMesh && c.geometry.type === 'BoxGeometry')) {
+      mm.updateMatrix(); const g = mm.geometry, mats = [].concat(mm.material);
+      for (const gr of g.groups) { const sub = g.clone(); sub.setIndex(Array.from(g.index.array.slice(gr.start, gr.start + gr.count))); sub.clearGroups(); sub.applyMatrix4(mm.matrix); const mat = mats[gr.materialIndex]; if (!byMat.has(mat)) byMat.set(mat, []); byMat.get(mat).push(sub.toNonIndexed()); }
+      parent.remove(mm);
+    }
+    for (const [mat, gs] of byMat) { const mesh = new THREE.Mesh(THREE.mergeGeometries(gs), mat); mesh.receiveShadow = true; parent.add(mesh); }
+  }
+  bake(box); bake(lidPivot);
   // soft contact shadow
   const bsh = new THREE.Mesh(new THREE.PlaneGeometry(BW * 1.5, BD * 1.7), new THREE.MeshBasicMaterial({ map: canvasTex(256, 256, (g) => { const gr = g.createRadialGradient(128, 128, 30, 128, 128, 128); gr.addColorStop(0, 'rgba(0,0,0,.7)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.fillRect(0, 0, 256, 256); }), transparent: true, depthWrite: false }));
   bsh.rotation.x = -Math.PI / 2; bsh.position.y = 0.002; bsh.renderOrder = 2; box.add(bsh);
@@ -393,7 +404,7 @@ async function initAnim() {
   let wpp = 1; // world units per px at z=0
   function resize() {
     measure(); placePlate();
-    renderer.setSize(L.vw, L.vh, false);
+    renderer.setPixelRatio(RES ? RES.cur : DPR0); renderer.setSize(L.vw, L.vh, false);
     camera.aspect = L.vw / L.vh; camera.updateProjectionMatrix(); camera.updateMatrixWorld(true);
     wpp = 2 * 10 * Math.tan(THREE.MathUtils.degToRad(17.5)) / L.vh;
     computeFits(); dirty = true;
@@ -493,7 +504,7 @@ async function initAnim() {
     }
     o.position.set(x, y, z); o.scale.setScalar(sc); o.quaternion.copy(qA);
   }
-  let tNow = 0;
+  let tNow = 0, shadowTick = 0;
   function update() {
     const A = anchor(); const e = S.explode;
     mouse.x += (mouse.tx - mouse.x) * 0.08; mouse.y += (mouse.ty - mouse.y) * 0.08;
@@ -573,19 +584,32 @@ async function initAnim() {
       });
     }
   }
+  /* v9 perf: dynamic resolution. While the user is scrolling and frames run long, render at a lower internal resolution;
+     full resolution comes back ~0.3 s after scrolling stops (the canvas keeps its CSS size, so nothing moves). */
+  const DPR = Math.min(window.devicePixelRatio || 1, 1.5);
+  RES = { cur: DPR, low: Math.max(0.5, DPR * 0.5), ema: 16, last: 0, scrollAt: 0, slow: 0 };
+  lenis.on('scroll', () => { RES.scrollAt = performance.now(); });
+  function setRes(r) { if (Math.abs(r - RES.cur) < 1e-3) return; RES.cur = r; renderer.setPixelRatio(r); renderer.setSize(L.vw, L.vh, false); dirty = true; }
+  function adaptRes(now) {
+    const dt = RES.last ? Math.min(100, now - RES.last) : 16; RES.last = now; RES.ema += (dt - RES.ema) * 0.2;
+    const scrolling = now - RES.scrollAt < 300;
+    if (scrolling) { if (RES.cur > RES.low && (RES.slow > 0 || RES.ema > 21)) { RES.slow = 1; setRes(RES.low); } }
+    else if (RES.cur < DPR) setRes(DPR);
+  }
   function render() {
-    tNow = performance.now() / 1000;
+    const now = performance.now(); adaptRes(now);
+    tNow = now / 1000;
     const floating = pinned && (S.explode > 0.05 || S.boxIn > 0) || Math.abs(mouse.tx - mouse.x) + Math.abs(mouse.ty - mouse.y) > 0.002;
     if (!dirty && !floating) return;
     if (!pinned && tl.scrollTrigger.progress >= 1 && stage.getBoundingClientRect().bottom < 0) return;
-    update(); renderer.render(scene, camera); dirty = false;
+    update(); renderer.shadowMap.needsUpdate = (shadowTick++ & 1) === 0; renderer.render(scene, camera); dirty = false;
   }
   // compile every material up front (in parallel where the GPU driver allows) so nothing hitches mid-scroll
   { const hid = []; scene.traverse(o => { if (!o.visible) { hid.push(o); o.visible = true; } });
     try { await (renderer.compileAsync ? renderer.compileAsync(scene, camera) : renderer.compile(scene, camera)); } catch (e) {}
     hid.forEach(o => { o.visible = false; }); await yieldMain(); }
   resize();
-  update(); renderer.render(scene, camera);
+  update(); renderer.shadowMap.needsUpdate = true; renderer.render(scene, camera);
   canvas.classList.add('on'); heroImg.classList.add('off');
   gsap.ticker.add(render);
   let rT; window.addEventListener('resize', () => { clearTimeout(rT); rT = setTimeout(() => { resize(); ScrollTrigger.refresh(); }, 120); });
@@ -599,5 +623,5 @@ async function initAnim() {
     out.photo = bbox(photo); out.burger3 = b3.visible && S.boxIn > 0.12 ? bbox(burger) : null; out.fries = bbox(fries); out.dipO = bbox(dipO); out.dipD = bbox(dipD); out.shake = bbox(shake); bsh.visible = false; out.box = box.visible ? bbox(box) : null; bsh.visible = true;
     return out;
   };
-  window.__S = S;
+  window.__S = S; window.__R = { renderer, scene, sun };
 }
