@@ -176,8 +176,8 @@ main:focus{outline:none}
   .anim .scrim-l{background:linear-gradient(180deg,rgba(8,8,8,.94) 0,rgba(8,8,8,.85) 34%,rgba(8,8,8,0) 56%)}
   .anim .scrim-b{opacity:1}
 }
-.t-combo .still img{object-position:66% 50%}
-.t-shakes .still img{object-position:34% 50%}
+.t-combo .still img{object-position:36% 50%}
+.t-shakes .still img{object-position:50% 50%}
 @media (min-aspect-ratio:1/1){.anim .scrim-l{opacity:1}}
 
 /* ---------- v2: video-matched layout ---------- */
