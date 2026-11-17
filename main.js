@@ -133,7 +133,10 @@ async function initAnim() {
     heroImg.style.opacity = 1;
   }
 
+  const yieldMain = () => new Promise(r => setTimeout(r, 0)); // v9: split the init into short tasks (TBT)
+  await yieldMain();
   measure(); placePlate(); noPaper.classList.add('ld');
+  await yieldMain();
 
   /* ---------- timeline ---------- */
   const tl = gsap.timeline({
@@ -213,8 +216,10 @@ async function initAnim() {
   let kitchenLoaded = false;
   function loadKitchen() { kitchenLoaded = true; $('.bg-kitchen').classList.add('ld'); }
   housekeeping(); inited = true;
+  await yieldMain();
   document.fonts.ready.then(() => scramble($('#h-hero')));
 
+  await yieldMain();
   /* ---------- menu / concept scroll animations ---------- */
   $$('.card').forEach(c => {
     gsap.fromTo(c, { y: 70, opacity: 0.001 }, { y: 0, opacity: 1, ease: 'power2.out', scrollTrigger: { trigger: c, start: 'top 98%', end: 'top 62%', scrub: 0.5 } });
@@ -237,7 +242,6 @@ async function initAnim() {
     const later = () => setTimeout(() => (window.requestIdleCallback ? requestIdleCallback(go, { timeout: 2000 }) : go()), 6000);
     if (document.readyState === 'complete') later(); else addEventListener('load', later, { once: true });
   });
-  const yieldMain = () => new Promise(r => setTimeout(r, 0));
   const THREE = await import('./vendor/three-app.js?v=9');
   const canvas = $('#gl');
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'high-performance' });
