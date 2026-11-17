@@ -94,8 +94,8 @@ async function initAnim() {
         hero: { x0: L.vw * 0.31, x1: L.vw * 0.63, y0: top, y1: bot },
         smash: { x0: L.vw * 0.26, x1: L.vw * 0.6, y0: top + (L.vh - top) * 0.05, y1: L.vh * 0.8 },
         stack: { x0: L.vw * 0.31, x1: L.vw * 0.65, y0: top - 2, y1: L.vh * 0.97 }, // labels sit right of x1
-        combo: { x0: L.vw * 0.12, x1: L.vw * 0.88, y0: top + 20, y1: bot - 20 },
-        boxOpen: { x0: L.vw * 0.09, x1: L.vw * 0.78, y0: top + (L.vh - top) * 0.3, y1: L.vh * 0.95 }, // body only; the open lid runs off the top like the video
+        combo: { x0: L.vw * 0.07, x1: L.vw * 0.6, y0: top + 30, y1: bot - 24 }, // video: the reassembled set sits left of centre
+        boxOpen: { x0: L.vw * 0.06, x1: L.vw * 0.74, y0: top + (L.vh - top) * 0.24, y1: L.vh * 0.97 }, // body only; the open lid runs off the top like the video
         boxFront: { x0: L.vw * 0.1, x1: L.vw * 0.9, y0: top + (L.vh - top) * 0.2, y1: L.vh * 0.78 },
       };
     } else {
@@ -234,7 +234,7 @@ async function initAnim() {
     if (document.readyState === 'complete') later(); else addEventListener('load', later, { once: true });
   });
   const yieldMain = () => new Promise(r => setTimeout(r, 0));
-  const THREE = await import('./vendor/three-app.js?v=2');
+  const THREE = await import('./vendor/three-app.js?v=3');
   const canvas = $('#gl');
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'high-performance' });
   renderer.setClearColor(0x000000, 0);
@@ -357,7 +357,7 @@ async function initAnim() {
   bsh.rotation.x = -Math.PI / 2; bsh.position.y = 0.002; bsh.renderOrder = 2; box.add(bsh);
   // slots inside the box (box-local, bottom anchored) + widths in box units
   const SLOT = { photo: [-0.89, INS.burger, 0.06, 1.4], burger: [-0.89, INS.burger, 0.06, 0], fries: [0.3, INS.fries, -0.46, 0], dipO: [0.12, INS.dips, 0.46, 0], dipD: [0.5, INS.dips, 0.66, 0], shake: [1.14, INS.shake, 0.04, 0] };
-  const BOX_OPEN = { rx: 0.47, ry: -0.24, lid: -1.74 }, BOX_FRONT = { rx: 0.2, ry: 0.0, lid: 0 };
+  const BOX_OPEN = { rx: 0.62, ry: -0.3, lid: -1.74 }, BOX_FRONT = { rx: 0.2, ry: 0.0, lid: 0 };
 
   await yieldMain();
   /* ---------- real 3D food (geometry + PBR, no billboards) ---------- */
@@ -411,8 +411,8 @@ async function initAnim() {
   }
   // free (light scene) poses around the reassembled burger, burger units: [x, y(centre), width]
   const COMBO_ITEMS = () => L.portrait
-    ? { fries: [-2.0, 3.6, 1.8], dipO: [-0.4, 5.4, 0.95], dipD: [1.2, 4.6, 0.95], shake: [2.15, 1.2, 1.65] }
-    : { fries: [-4.1, 3.6, 2.3], dipO: [-1.3, 5.6, 1.05], dipD: [0.9, 4.7, 1.05], shake: [3.7, 1.4, 2.1] };
+    ? { fries: [-1.8, 3.7, 1.35], dipO: [-0.4, 5.4, 0.95], dipD: [1.2, 4.6, 0.95], shake: [2.15, 1.2, 1.65] }
+    : { fries: [-3.4, 3.7, 1.5], dipO: [-1.0, 5.0, 0.9], dipD: [0.9, 4.7, 0.95], shake: [3.6, 1.6, 2.8] };
   function computeFits() {
     // hero: photo plane width = 4.9 local units; photo centre y = 0 in local space
     const hb = L.heroB; const s0 = (hb.w * wpp) / 4.9; const c = toWorld(hb.cx, hb.base - hb.h / 2);
