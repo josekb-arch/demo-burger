@@ -112,7 +112,8 @@ main:focus{outline:none}
   .anim .t-hero .big{font-size:42px}
   .anim .t-hero .sub{font-size:14px;margin-top:8px}
   .anim .t-hero .ctas{margin-top:12px}
-  .anim .t-hero .eta{display:none}
+  .anim .t-hero .eta{display:inline-flex;margin-top:10px;min-height:32px}
+  .anim .t-hero .kicker{margin-bottom:8px}
   .anim .t-smash .big,.anim .t-stack .big,.anim .t-combo .big,.anim .t-shakes .big{font-size:40px}
   .anim .body{font-size:14px;margin-top:10px}
 }
@@ -178,3 +179,40 @@ main:focus{outline:none}
 .t-combo .still img{object-position:66% 50%}
 .t-shakes .still img{object-position:34% 50%}
 @media (min-aspect-ratio:1/1){.anim .scrim-l{opacity:1}}
+
+/* ---------- v2: video-matched layout ---------- */
+.acc{color:var(--or)}
+.dark .acc{color:#F0640A}
+@media (min-aspect-ratio:1/1){
+  .anim .t-combo{top:calc(var(--navh) + 3.5vh);bottom:auto;right:clamp(20px,5vw,80px);width:auto;max-width:40vw}
+  .anim .t-combo .big{font-size:clamp(40px,4.4vw,84px);white-space:nowrap}
+  .anim .t-combo .big br{display:none}
+  .anim .t-combo .body{max-width:34ch}
+}
+@media (min-aspect-ratio:1/1){
+  .anim .t-hero{left:clamp(16px,1.8vw,32px);top:calc(var(--navh) + 16vh);bottom:auto;display:block;max-width:30vw}
+  .anim .t-hero .big{font-size:clamp(44px,4.6vw,88px)}
+  .anim .t-smash{right:auto;left:59vw;top:calc(var(--navh) + 17vh);bottom:auto;display:block;width:38vw}
+  .anim .t-stack{left:clamp(16px,3vw,48px);bottom:16vh;width:min(34vw,520px)}
+  .anim .t-shakes{left:clamp(16px,2vw,36px);top:calc(var(--navh) + 30vh);width:min(36vw,560px)}
+  .anim .t-smash .big,.anim .t-stack .big,.anim .t-shakes .big{font-size:clamp(40px,4.8vw,92px);white-space:nowrap}
+  .anim .t-smash .big br,.anim .t-shakes .big br{display:none}
+  .anim .t-smash .body,.anim .t-shakes .body{margin-top:10px;max-width:40ch}
+}
+@media (min-aspect-ratio:1/1){.anim .t-smash .nl::before,.anim .t-shakes .nl::before{content:"\00a0"}}
+/* lineup / sides: video proportions */
+.lineup-title{font-size:clamp(56px,9vw,150px)}
+.card h3{font-size:clamp(36px,4.7vw,84px);line-height:.86}
+.ph{aspect-ratio:1.22/1}
+.buy{display:flex;align-items:flex-end;gap:clamp(12px,2vw,28px);margin-top:26px}
+.buy .prices{margin:0;flex:1;max-width:62%}
+.buy .order{margin:0 0 0 auto;align-self:flex-end}
+@media (max-width:600px){.card h3{font-size:clamp(40px,12vw,56px)}.buy{flex-wrap:wrap}.buy .prices{max-width:none;flex-basis:100%}.buy .order{margin-left:0}}
+
+/* reduced motion / no WebGL: headline lines never split ("AN ALL-" / "STAR.") */
+.scr .l{white-space:nowrap}
+.rm .big{font-size:clamp(40px,5.4vw,96px)}
+@media (max-width:820px){.rm .big{font-size:clamp(40px,11vw,72px)}}
+.anim .bg-shade{background:radial-gradient(120% 90% at 42% 45%,#262422 0,#141414 48%,#070707 100%)}
+.anim .bg-nopaper{background:#0d0d0d no-repeat;opacity:0}
+.anim .bg-nopaper.ld{background-image:url(assets/img/plate_nopaper.webp)}

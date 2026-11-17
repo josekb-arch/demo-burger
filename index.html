@@ -7,17 +7,27 @@
 <meta name="description" content="All Star Burgers: smash burgers, loaded fries and shakes. Demo replica built with Three.js, GSAP ScrollTrigger and Lenis.">
 <meta name="robots" content="noindex">
 <meta name="theme-color" content="#F4F3EF">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="All Star Burgers">
+<meta property="og:title" content="All Star Burgers — Built like an All-Star">
+<meta property="og:description" content="Smash burgers, loaded fries and shakes. Scroll the burger apart, pack the Game Day Combo and meet the lineup.">
+<meta property="og:url" content="https://josekb-arch.github.io/demo-burger/">
+<meta property="og:image" content="https://josekb-arch.github.io/demo-burger/assets/img/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="All Star smash burger on white deli paper on a dark table">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="assets/img/logo.svg" type="image/svg+xml">
 <link rel="preload" href="fonts/anton.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="fonts/spacegrotesk.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="preload" href="assets/img/hero_plate.webp" as="image">
-<link rel="preload" href="assets/img/burger.webp" as="image">
+<link rel="preload" href="assets/img/hero_plate.webp" as="image" fetchpriority="high">
+<link rel="preload" href="assets/img/burger.webp" as="image" fetchpriority="high">
 <script>
   (function(){var d=document.documentElement,rm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
   var gl=false;try{var c=document.createElement('canvas');gl=!!(c.getContext('webgl2')||c.getContext('webgl'));}catch(e){}
   d.className+=(rm||!gl)?' rm':' anim';})();
 </script>
-<link rel="stylesheet" href="style.css?v=1">
+<link rel="stylesheet" href="style.css?v=2">
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -42,13 +52,14 @@
   <!-- ===== Pinned 3D story ===== -->
   <div class="stage" id="stage">
     <div class="bg bg-plate" aria-hidden="true"></div>
+    <div class="bg bg-nopaper" aria-hidden="true"></div>
     <div class="bg bg-shade" aria-hidden="true"></div>
     <div class="bg bg-light" aria-hidden="true"></div>
     <div class="bg bg-kitchen" aria-hidden="true"></div>
     <div class="bg scrim scrim-r" aria-hidden="true"></div>
     <div class="bg scrim scrim-l" aria-hidden="true"></div>
     <div class="bg scrim scrim-b" aria-hidden="true"></div>
-    <img class="hero-burger" src="assets/img/burger.webp" alt="" width="800" height="659" aria-hidden="true">
+    <img class="hero-burger" fetchpriority="high" src="assets/img/burger.webp" alt="" width="800" height="659" aria-hidden="true">
     <canvas id="gl" aria-hidden="true"></canvas>
     <ol class="labels" aria-hidden="true">
       <li>Buttery<br>toasted bun</li>
@@ -98,7 +109,7 @@
       <figure class="still"><img src="assets/img/rm_combo.webp" alt="Open black All Star Burgers box with a burger, fries, dip and an Oreo shake on a steel counter" loading="lazy" width="1280" height="720"></figure>
       <div class="copy">
         <p class="num"><span>03</span><span class="dash"></span></p>
-        <h2 id="h-combo" class="big scr" data-text="Game day combo">Game day combo</h2>
+        <h2 id="h-combo" class="big scr" data-text="Game day {combo}">Game day <span class="acc">combo</span></h2>
         <p class="body">Burgers, sauces, fries, and All Star shakes packed fresh for pickup or delivery.</p>
       </div>
     </section>
@@ -122,35 +133,32 @@
         <p class="n">01</p>
         <h3 class="glitch">Free Throw Shot Burger</h3>
         <p class="d">Smashed beef patty, American cheese, grilled onions, pickles, All-Star Sauce.</p>
-        <dl class="prices">
+        <div class="buy"><dl class="prices">
           <div><dt>Single</dt><dd>$7.46</dd></div>
           <div><dt>Double</dt><dd>$10.34</dd></div>
           <div><dt>Triple</dt><dd>$13.79</dd></div>
-        </dl>
-        <button class="btn btn-line order" type="button" aria-label="Order now: Free Throw Shot Burger">Order now</button>
+        </dl><button class="btn btn-line order" type="button" aria-label="Order now: Free Throw Shot Burger">Order now</button></div>
       </article>
       <article class="card">
         <div class="ph"><img src="assets/img/c_layup.webp" alt="Burger with bacon, jalapeños and pepper jack cheese" loading="lazy" width="900" height="675"></div>
         <p class="n">02</p>
         <h3 class="glitch">Layup Burger</h3>
         <p class="d">Smashed beef patty, beef bacon, jalapeños, pepper jack cheese, grilled onions, pickles, All-Star Sauce.</p>
-        <dl class="prices">
+        <div class="buy"><dl class="prices">
           <div><dt>Single</dt><dd>$9.19</dd></div>
           <div><dt>Double</dt><dd>$13.79</dd></div>
           <div><dt>Triple</dt><dd>$16.09</dd></div>
-        </dl>
-        <button class="btn btn-line order" type="button" aria-label="Order now: Layup Burger">Order now</button>
+        </dl><button class="btn btn-line order" type="button" aria-label="Order now: Layup Burger">Order now</button></div>
       </article>
       <article class="card">
         <div class="ph combo"><img src="assets/img/c_hookshot.webp" alt="Pastrami burger combo with fries and a cola on a wooden board" loading="lazy" width="900" height="675"><span class="combo-tag" aria-hidden="true">Combo</span></div>
         <p class="n">03</p>
         <h3 class="glitch">Hook Shot Burger</h3>
         <p class="d">Smashed beef patty, pastrami, American cheese, grilled onions, pickles, All-Star Sauce.</p>
-        <dl class="prices">
+        <div class="buy"><dl class="prices">
           <div><dt>Single</dt><dd>$14.94</dd></div>
           <div><dt>Double</dt><dd>$19.54</dd></div>
-        </dl>
-        <button class="btn btn-line order" type="button" aria-label="Order now: Hook Shot Burger">Order now</button>
+        </dl><button class="btn btn-line order" type="button" aria-label="Order now: Hook Shot Burger">Order now</button></div>
       </article>
 
       <article class="card">
@@ -158,33 +166,30 @@
         <p class="n">04</p>
         <h3 class="glitch">Timeout Fries</h3>
         <p class="d">Crispy fries, available small or large.</p>
-        <dl class="prices">
+        <div class="buy"><dl class="prices">
           <div><dt>Small</dt><dd>$5.16</dd></div>
           <div><dt>Large</dt><dd>$9.76</dd></div>
-        </dl>
-        <button class="btn btn-line order" type="button" aria-label="Order now: Timeout Fries">Order now</button>
+        </dl><button class="btn btn-line order" type="button" aria-label="Order now: Timeout Fries">Order now</button></div>
       </article>
       <article class="card">
         <div class="ph"><img src="assets/img/c_loaded.webp" alt="Loaded fries with cheese sauce, beef, onions and pickles" loading="lazy" width="900" height="675"></div>
         <p class="n">05</p>
         <h3 class="glitch">All-Star Loaded Fries</h3>
         <p class="d">Loaded fries with bold All-Star toppings.</p>
-        <dl class="prices">
+        <div class="buy"><dl class="prices">
           <div><dt>Small</dt><dd>$13.21</dd></div>
-        </dl>
-        <button class="btn btn-line order" type="button" aria-label="Order now: All-Star Loaded Fries">Order now</button>
+        </dl><button class="btn btn-line order" type="button" aria-label="Order now: All-Star Loaded Fries">Order now</button></div>
       </article>
       <article class="card">
         <div class="ph"><img src="assets/img/c_shake.webp" alt="Cookies and cream milkshake with chocolate drizzle" loading="lazy" width="900" height="675"></div>
         <p class="n">06</p>
         <h3 class="glitch">Overtime Milkshakes</h3>
         <p class="d">Oreo, Biscoff, and Strawberry All-Star milkshakes.</p>
-        <dl class="prices long">
+        <div class="buy"><dl class="prices long">
           <div><dt>Oreo Overtime Milkshake</dt><dd>$5.99</dd></div>
           <div><dt>Biscoff Baller Milkshake</dt><dd>$5.99</dd></div>
           <div><dt>Strawberry All-Star Milkshake</dt><dd>$5.99</dd></div>
-        </dl>
-        <button class="btn btn-line order" type="button" aria-label="Order now: Overtime Milkshakes">Order now</button>
+        </dl><button class="btn btn-line order" type="button" aria-label="Order now: Overtime Milkshakes">Order now</button></div>
       </article>
     </div>
   </section>
@@ -211,9 +216,9 @@
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<script src="vendor/gsap.min.js?v=1"></script>
-<script src="vendor/ScrollTrigger.min.js?v=1"></script>
-<script src="vendor/lenis.min.js?v=1"></script>
-<script type="module" src="main.js?v=1"></script>
+<script src="vendor/gsap.min.js?v=2"></script>
+<script src="vendor/ScrollTrigger.min.js?v=2"></script>
+<script src="vendor/lenis.min.js?v=2"></script>
+<script type="module" src="main.js?v=2"></script>
 </body>
 </html>

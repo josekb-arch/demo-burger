@@ -13,7 +13,9 @@ $$('.order').forEach(b => b.addEventListener('click', () => say('Demo — online
 const GLYPHS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ#%&*+/<>=';
 $$('.scr').forEach(h => {
   const lines = h.dataset.text.split('|');
-  h.innerHTML = `<span class="sr">${lines.join(' ')}</span><span aria-hidden="true">${lines.map(l => `<span class="l" data-t="${l}">${l}</span>`).join('<br>')}</span>`;
+  // {word} = orange accent segment
+  const seg = (l, li) => l.split(/(\{[^}]+\})/).filter(Boolean).map(x => { const acc = x[0] === '{'; const t = acc ? x.slice(1, -1) : x; return `<span class="l${acc ? ' acc' : ''}" data-t="${t}">${t}</span>`; }).join('').replace(/^<span class="l/, li ? '<span class="nl l' : '$&');
+  h.innerHTML = `<span class="sr">${lines.join(' ').replace(/[{}]/g, '')}</span><span aria-hidden="true">${lines.map(seg).join('<br>')}</span>`;
 });
 function scramble(h) {
   if (!ANIM) return;
@@ -65,7 +67,7 @@ async function initAnim() {
   }));
 
   const stage = $('#stage');
-  const plate = $('.bg-plate');
+  const plate = $('.bg-plate'), noPaper = $('.bg-nopaper');
   const heroImg = $('.hero-burger');
   const panels = { hero: $('#s-hero'), smash: $('#s-smash'), stack: $('#s-stack'), combo: $('#s-combo'), shakes: $('#s-shakes') };
   const labelsEl = $('.labels'); const labelLis = $$('li', labelsEl);
@@ -88,12 +90,13 @@ async function initAnim() {
     const pad = 20, top = L.navh + 12, bot = L.vh - 14;
     if (!L.portrait) {
       L.reg = {
-        hero: { x0: r.hero.x + r.hero.w + 40, x1: L.vw - 28, y0: top, y1: bot },
-        smash: { x0: 28, x1: r.smash.x - 40, y0: top, y1: bot },
-        stack: { x0: Math.max(r.stack.x + r.stack.w * 0.55, L.vw * 0.3), x1: L.vw * 0.74, y0: top, y1: bot }, // labels sit right of x1
+        // video framing: the burger stays centred (~47% of the width) from the hero to the stack
+        hero: { x0: L.vw * 0.31, x1: L.vw * 0.63, y0: top, y1: bot },
+        smash: { x0: L.vw * 0.3, x1: L.vw * 0.64, y0: top + (L.vh - top) * 0.05, y1: L.vh * 0.8 },
+        stack: { x0: L.vw * 0.31, x1: L.vw * 0.65, y0: top - 2, y1: L.vh * 0.97 }, // labels sit right of x1
         combo: { x0: L.vw * 0.12, x1: L.vw * 0.88, y0: top + 20, y1: bot - 20 },
-        boxOpen: { x0: 24, x1: r.combo.x - 40, y0: top + 10, y1: bot - 10 },
-        boxFront: { x0: r.shakes.x + r.shakes.w + 40, x1: L.vw - 28, y0: top + 30, y1: bot - 30 },
+        boxOpen: { x0: L.vw * 0.09, x1: L.vw * 0.78, y0: top + (L.vh - top) * 0.3, y1: L.vh * 0.95 }, // body only; the open lid runs off the top like the video
+        boxFront: { x0: L.vw * 0.1, x1: L.vw * 0.9, y0: top + (L.vh - top) * 0.2, y1: L.vh * 0.78 },
       };
     } else {
       const above = (k, extra = 0) => ({ x0: 14, x1: L.vw - 14, y0: top, y1: r[k].y - 16 - extra });
@@ -102,7 +105,7 @@ async function initAnim() {
         smash: above('smash'),
         stack: { x0: 12, x1: L.vw - 148, y0: top, y1: r.stack.y - 16 },
         combo: above('combo'),
-        boxOpen: above('combo'),
+        boxOpen: { x0: 8, x1: L.vw - 8, y0: top + (r.combo.y - top) * 0.3, y1: r.combo.y - 12 },
         boxFront: { x0: 14, x1: L.vw - 14, y0: r.shakes.y + r.shakes.h + 18, y1: bot - 10 },
       };
     }
@@ -114,16 +117,15 @@ async function initAnim() {
     const R = L.reg.hero; const cover = Math.max(L.vw / 1280, L.vh / 720);
     const k = cover * (L.portrait ? 1.6 : 1.25);
     const iw = 1280 * k, ih = 720 * k;
-    const want = { x: (R.x0 + R.x1) / 2, y: L.portrait ? R.y1 - (R.y1 - R.y0) * 0.1 : L.navh + (L.vh - L.navh) * 0.7 };
+    const want = { x: (R.x0 + R.x1) / 2, y: L.portrait ? R.y1 - (R.y1 - R.y0) * 0.1 : L.navh + (L.vh - L.navh) * 0.62 };
     let ox = want.x - PAPER.x * k, oy = want.y - PAPER.y * k;
     ox = Math.min(0, Math.max(L.vw - iw, ox)); oy = Math.min(0, Math.max(L.vh - ih, oy));
-    plate.style.backgroundSize = `${iw}px ${ih}px`;
-    plate.style.backgroundPosition = `${ox}px ${oy}px`;
+    for (const el of [plate, noPaper]) { el.style.backgroundSize = `${iw}px ${ih}px`; el.style.backgroundPosition = `${ox}px ${oy}px`; }
     const paper = { x: ox + PAPER.x * k, y: oy + PAPER.y * k };
-    plate.style.transformOrigin = `${paper.x}px ${paper.y}px`;
+    plate.style.transformOrigin = noPaper.style.transformOrigin = `${paper.x}px ${paper.y}px`;
     // burger photo size: 800x659 → fit region
     const rw = R.x1 - R.x0, rh = paper.y - R.y0;
-    let w = Math.min(rw * (L.portrait ? 0.72 : 0.72), rh * 0.92 * 800 / 659, 560);
+    let w = Math.min(rw * (L.portrait ? 0.72 : 0.86), rh * 0.92 * 800 / 659, 620);
     const h = w * 659 / 800;
     L.heroB = { cx: paper.x, base: paper.y + h * 0.04, w, h };
     heroImg.style.width = w + 'px';
@@ -131,41 +133,43 @@ async function initAnim() {
     heroImg.style.opacity = 1;
   }
 
-  measure(); placePlate();
+  measure(); placePlate(); noPaper.classList.add('ld');
 
   /* ---------- timeline ---------- */
   const tl = gsap.timeline({
     defaults: { ease: 'power1.inOut' },
     onUpdate: () => { dirty = true; housekeeping(); },
-    scrollTrigger: { trigger: stage, start: 'top top', end: () => '+=' + Math.round(L.vh * 7.2), pin: true, scrub: 0.6, invalidateOnRefresh: true, anticipatePin: 1,
+    scrollTrigger: { trigger: stage, start: 'top top', end: () => '+=' + Math.round(L.vh * 7.6), pin: true, scrub: 0.6, invalidateOnRefresh: true, anticipatePin: 1,
       onToggle: self => { pinned = self.isActive; dirty = true; } },
   });
   let pinned = true;
-  const hide = { autoAlpha: 0, y: -24, duration: 0.25 };
-  const show = (el, at) => tl.fromTo(el, { autoAlpha: 0, y: 28 }, { autoAlpha: 1, y: 0, duration: 0.35, ease: 'power2.out' }, at);
+  // copy blocks scroll through like the video: rise in from below, rest, then leave upwards
+  const show = (el, at) => tl.fromTo(el, { y: () => L.vh * 0.42 }, { y: 0, duration: 0.5, ease: 'power2.out' }, at).fromTo(el, { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.12, ease: 'none' }, at);
+  const leave = (el, at) => tl.to(el, { y: () => -L.vh * (L.portrait && (el === panels.shakes) ? 0.06 : 0.42), duration: 0.42, ease: 'power1.in' }, at).to(el, { autoAlpha: 0, duration: 0.2, ease: 'none' }, at + 0.12);
 
-  tl.to(S, { hz: 1, duration: 0.7, ease: 'none' }, 0)
-    .to(S, { spin: 1, duration: 9.4, ease: 'none' }, 0)
-    .fromTo(plate, { scale: 1 }, { scale: 1.1, duration: 2.8, ease: 'none' }, 0)
-    .fromTo('.bg-kitchen', { scale: 1.1 }, { scale: 1, duration: 4.2, ease: 'none' }, 5.2)
-    .to(panels.hero, hide, 0.55)
-    .to('.scrim-b', { opacity: 0, duration: 0.35 }, 0.6)
-    .to('.scrim-l', { opacity: 0, duration: 0.35 }, 0.6)
-    .to(S, { seg: 1, duration: 1.3 }, 0.6)
-    .to(S, { photo: 0, duration: 0.18 }, 0.7)
-    .to(S, { explode: 1, duration: 1.25, ease: 'power2.in' }, 0.68)
-    .to('.bg-shade', { opacity: 0.55, duration: 1 }, 0.7)
+  tl.to(S, { hz: 1, duration: 0.9, ease: 'none' }, 0)
+    .to(S, { spin: 1, duration: 9.9, ease: 'none' }, 0)
+    .fromTo([plate, noPaper], { scale: 1 }, { scale: 1.1, duration: 1.8, ease: 'none' }, 0)
+    .fromTo('.bg-kitchen', { scale: 1.1 }, { scale: 1, duration: 4.6, ease: 'none' }, 5.2);
+  leave(panels.hero, 0.6);
+  tl.to('.scrim-b', { opacity: 0, duration: 0.35 }, 0.7)
+    .to('.scrim-l', { opacity: 0, duration: 0.35 }, 0.7)
+    .to(S, { seg: 1, duration: 1.0 }, 0.85)
+    .to(S, { photo: 0, duration: 0.15 }, 0.92)
+    .to(S, { explode: 0.42, duration: 0.85, ease: 'power2.out' }, 0.9)
+    .to(noPaper, { opacity: 1, duration: 0.6 }, 0.95) // napkin fully gone by pin ≈0.16 (same table, no paper)
+    .to('.bg-shade', { opacity: 0.62, duration: 0.8 }, 0.95)
     .to('.scrim-r', { opacity: 1, duration: 0.5 }, 1.4);
-  show(panels.smash, 1.55);
-  tl.to({}, { duration: 0.6 }, 2.0)
-    .to(panels.smash, hide, 2.6)
-    .to('.scrim-r', { opacity: 0, duration: 0.3 }, 2.6)
-    .to('.bg-light', { opacity: 1, duration: 0.7 }, 2.7)
+  show(panels.smash, 1.45);
+  leave(panels.smash, 2.55);
+  tl.to('.scrim-r', { opacity: 0, duration: 0.3 }, 2.6)
+    .to(S, { explode: 0.62, duration: 0.7 }, 2.65)
+    .to('.bg-light', { opacity: 1, duration: 0.6 }, 2.7)
     .to(S, { seg: 2, duration: 0.8 }, 2.7)
-    .to(labelsEl, { autoAlpha: 1, duration: 0.35 }, 3.25);
-  show(panels.stack, 3.25);
-  tl.to({}, { duration: 0.6 }, 3.6)
-    .to([panels.stack, labelsEl], hide, 4.2)
+    .to(labelsEl, { autoAlpha: 1, duration: 0.35 }, 3.2);
+  show(panels.stack, 3.15);
+  leave(panels.stack, 4.15);
+  tl.to(labelsEl, { autoAlpha: 0, duration: 0.25 }, 4.15)
     .to(S, { explode: 0, duration: 0.7 }, 4.3)
     .to(S, { photo: 1, duration: 0.15 }, 4.85)
     .to(S, { items: 1, duration: 0.85, ease: 'power3.out' }, 4.4)
@@ -174,16 +178,17 @@ async function initAnim() {
     .to('.bg-light', { opacity: 0, duration: 0.6 }, 5.25)
     .to('.bg-shade', { opacity: 0, duration: 0.6 }, 5.25)
     .to(S, { boxIn: 1, duration: 1.0, ease: 'power2.inOut' }, 5.2)
-    .to('.scrim-r', { opacity: 1, duration: 0.4 }, 6.0);
-  show(panels.combo, 6.1);
-  tl.to({}, { duration: 0.6 }, 6.45)
-    .to(panels.combo, hide, 7.05)
-    .to('.scrim-r', { opacity: 0, duration: 0.3 }, 7.05)
+    .to('.scrim-r', { opacity: 1, duration: 0.4 }, 5.8);
+  show(panels.combo, 5.75);
+  leave(panels.combo, 7.0);
+  tl.to('.scrim-r', { opacity: 0, duration: 0.3 }, 7.05)
     .to(S, { lid: 1, duration: 1.1, ease: 'power2.inOut' }, 7.15)
     .to(S, { front: 1, duration: 1.3 }, 7.25)
-    .to('.scrim-l', { opacity: 1, duration: 0.4 }, 8.2);
-  show(panels.shakes, 8.3);
-  tl.to({}, { duration: 0.75 }, 8.65);
+    .to('.scrim-l', { opacity: 1, duration: 0.4 }, 7.9);
+  show(panels.shakes, 7.9);
+  leave(panels.shakes, 9.15);
+  tl.to('.scrim-l', { opacity: 0, duration: 0.4 }, 9.2)
+    .to({}, { duration: 0.35 }, 9.55);
   window.__tl = tl;
 
   /* panels: inert/aria in sync with what is painted (runs inside the scrubbed timeline) */
@@ -218,17 +223,32 @@ async function initAnim() {
   $$('.concept-title .ln').forEach((ln, i) => gsap.fromTo(ln, { yPercent: 60, opacity: 0.001 }, { yPercent: 0, opacity: 1, ease: 'power2.out', scrollTrigger: { trigger: '.concept-in', start: `top ${92 - i * 6}%`, end: `top ${58 - i * 6}%`, scrub: 0.5 } }));
   gsap.fromTo('.concept-body', { y: 50, opacity: 0.001 }, { y: 0, opacity: 1, ease: 'power2.out', scrollTrigger: { trigger: '.concept-in', start: 'top 85%', end: 'top 50%', scrub: 0.5 } });
 
-  /* ---------- Three.js (lazy module) ---------- */
-  const THREE = await import('./vendor/three.module.min.js');
+  /* ---------- Three.js: loaded on the first interaction (or once the page has been idle for a while) ----------
+     Until then the hero shows the same burger photo, so nothing changes visually; this keeps the main thread free while the page loads. */
+  await new Promise(res => {
+    const EV = ['wheel', 'touchstart', 'pointerdown', 'keydown', 'scroll'];
+    let done = false; const go = () => { if (done) return; done = true; EV.forEach(e => removeEventListener(e, go)); res(); };
+    EV.forEach(e => addEventListener(e, go, { passive: true }));
+    if (scrollY > 2) go();
+    const later = () => setTimeout(() => (window.requestIdleCallback ? requestIdleCallback(go, { timeout: 2000 }) : go()), 6000);
+    if (document.readyState === 'complete') later(); else addEventListener('load', later, { once: true });
+  });
+  const yieldMain = () => new Promise(r => setTimeout(r, 0));
+  const THREE = await import('./vendor/three-app.js?v=2');
   const canvas = $('#gl');
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'high-performance' });
   renderer.setClearColor(0x000000, 0);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+  renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; renderer.shadowMap.autoUpdate = true;
   const scene = new THREE.Scene();
+  await yieldMain();
+  scene.environment = THREE.studioEnv(renderer); scene.environmentIntensity = 0.85;
+  await yieldMain();
   const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 100);
   camera.position.set(0, 0, 10); camera.updateMatrixWorld(true);
   scene.add(new THREE.HemisphereLight(0xffffff, 0x2a2420, 1.4));
-  const sun = new THREE.DirectionalLight(0xffffff, 2.2); sun.position.set(-3, 6, 5); scene.add(sun);
+  const sun = new THREE.DirectionalLight(0xfff4e6, 2.4); sun.position.set(-3, 6, 5); scene.add(sun); scene.add(sun.target);
+  sun.castShadow = true; sun.shadow.mapSize.set(1024, 1024); sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.02; sun.shadow.radius = 4;
 
   const loader = new THREE.TextureLoader();
   const tex = (u) => new Promise((res, rej) => loader.load(u, t => { t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; res(t); }, undefined, rej));
@@ -239,9 +259,9 @@ async function initAnim() {
     ['l_patty1', 117, 594, 482, 172], ['l_patty2', 117, 766, 487, 192], ['l_botbun', 161, 958, 399, 202],
   ];
   const CX = 360, CY = 628;
-  const [layerTex, photoTex, friesTex, sauceTex, shakeTex] = await Promise.all([
+  const [layerTex, photoTex] = await Promise.all([
     Promise.all(LAY.map(l => tex(`assets/img/${l[0]}.webp`))),
-    tex('assets/img/burger.webp'), tex('assets/img/i_fries.webp'), tex('assets/img/i_sauce.webp'), tex('assets/img/i_shake.webp'),
+    tex('assets/img/burger.webp'),
   ]);
 
   const burger = new THREE.Group(); scene.add(burger);
@@ -261,19 +281,18 @@ async function initAnim() {
   // bottom-anchored billboard items (photo burger, fries, sauce, shake). Unit = 1 world unit wide.
   function item(t, w, h) { const g = new THREE.PlaneGeometry(1, h / w); g.translate(0, h / w / 2, 0); const m = new THREE.Mesh(g, planeMat(t)); m.renderOrder = 30; scene.add(m); return m; }
   const photo = item(photoTex, 800, 659);
-  const fries = item(friesTex, 362, 394), sauce = item(sauceTex, 252, 222), shake = item(shakeTex, 302, 515);
 
   /* ---------- the box (procedural, canvas textures) ---------- */
-  await document.fonts.load('100px Anton');
+  await document.fonts.load('100px Anton'); await yieldMain();
   const BW = 3.2, BH = 0.95, BD = 2.0, T = 0.04;
   const box = new THREE.Group(); scene.add(box); box.visible = false;
   function canvasTex(w, h, paint) { const c = document.createElement('canvas'); c.width = w; c.height = h; paint(c.getContext('2d'), w, h); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; return t; }
   const OR = '#E8622A', RED = '#C8341F';
   function starPath(g, cx, cy, r) { g.beginPath(); for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? r * 0.45 : r; g.lineTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr); } g.closePath(); }
-  function badge(g, cx, cy, r) {
-    g.fillStyle = RED; g.beginPath(); g.arc(cx, cy, r, 0, 7); g.fill();
-    g.strokeStyle = 'rgba(255,255,255,.75)'; g.lineWidth = r * 0.035; g.beginPath(); g.arc(cx, cy, r * 0.86, 0, 7); g.stroke();
-    g.fillStyle = '#fff';
+  function badge(g, cx, cy, r, bg = RED, fg = '#fff') {
+    g.fillStyle = bg; g.beginPath(); g.arc(cx, cy, r, 0, 7); g.fill();
+    g.strokeStyle = fg; g.globalAlpha = 0.75; g.lineWidth = r * 0.035; g.beginPath(); g.arc(cx, cy, r * 0.86, 0, 7); g.stroke(); g.globalAlpha = 1;
+    g.fillStyle = fg;
     g.beginPath(); g.ellipse(cx, cy - r * 0.18, r * 0.42, r * 0.26, 0, Math.PI, 0); g.fill();
     g.fillRect(cx - r * 0.46, cy - r * 0.13, r * 0.92, r * 0.09);
     g.beginPath(); g.roundRect(cx - r * 0.42, cy - r * 0.0, r * 0.84, r * 0.12, r * 0.05); g.fill();
@@ -316,14 +335,20 @@ async function initAnim() {
   const sideLTex = canvasTex(512, 256, (g, w, h) => { black(g, w, h); g.fillStyle = OR; g.fillRect(0, h * 0.62, w, 8); });
   const M = (o) => new THREE.MeshStandardMaterial({ roughness: 0.62, metalness: 0.05, ...o });
   const mBlack = M({ color: 0x121212 }), mIn = M({ map: wallInTex }), mFloor = M({ map: floorTex });
-  const panel = (w, h, d, mats, x, y, z, parent = box) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mats); m.position.set(x, y, z); parent.add(m); return m; };
+  const panel = (w, h, d, mats, x, y, z, parent = box) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mats); m.position.set(x, y, z); m.castShadow = m.receiveShadow = true; parent.add(m); return m; };
   // faces: +x, -x, +y, -y, +z, -z
   panel(BW, T, BD, [mBlack, mBlack, mFloor, mBlack, mBlack, mBlack], 0, T / 2, 0);
   panel(BW, BH, T, [mBlack, mBlack, mBlack, mBlack, M({ map: frontTex }), mIn], 0, BH / 2, BD / 2 - T / 2);
   panel(BW, BH, T, [mBlack, mBlack, mBlack, mBlack, mIn, mBlack], 0, BH / 2, -BD / 2 + T / 2);
   panel(T, BH, BD, [M({ map: sideTex }), mIn, mBlack, mBlack, mBlack, mBlack], BW / 2 - T / 2, BH / 2, 0);
   panel(T, BH, BD, [mIn, M({ map: sideLTex }), mBlack, mBlack, mBlack, mBlack], -BW / 2 + T / 2, BH / 2, 0);
-  panel(T, BH * 0.55, BD - 2 * T, [mIn, mIn, mBlack, mBlack, mBlack, mBlack], -0.25, BH * 0.275, 0);
+  panel(T, BH * 0.62, BD - 2 * T, [mIn, mIn, mBlack, mBlack, mBlack, mBlack], -0.18, BH * 0.31, 0);
+  // raised insert for the dips (front-right) + ring holder wall for the shake, like the video's compartments
+  const INS = { burger: 0.34, dips: 0.6, fries: 0.22, shake: 0.36 };
+  panel(1.36, INS.burger, BD - 2 * T, [mIn, mIn, mFloor, mBlack, mIn, mIn], -0.88, INS.burger / 2, 0);
+  panel(0.86, INS.dips, 0.84, [mIn, mIn, mFloor, mBlack, mIn, mIn], 0.3, INS.dips / 2, 0.54);
+  panel(0.86, INS.fries, 1.0, [mIn, mIn, mFloor, mBlack, mIn, mIn], 0.3, INS.fries / 2, -0.48);
+  panel(0.8, INS.shake, BD - 2 * T, [mIn, mIn, mFloor, mBlack, mIn, mIn], 1.17, INS.shake / 2, 0);
   const lidPivot = new THREE.Group(); lidPivot.position.set(0, BH, -BD / 2); box.add(lidPivot);
   const lidMats = [mBlack, mBlack, M({ map: lidTopTex }), M({ map: lidInTex }), mBlack, mBlack];
   panel(BW + 0.02, T, BD + 0.02, lidMats, 0, T / 2, BD / 2, lidPivot);
@@ -331,9 +356,35 @@ async function initAnim() {
   const bsh = new THREE.Mesh(new THREE.PlaneGeometry(BW * 1.5, BD * 1.7), new THREE.MeshBasicMaterial({ map: canvasTex(256, 256, (g) => { const gr = g.createRadialGradient(128, 128, 30, 128, 128, 128); gr.addColorStop(0, 'rgba(0,0,0,.7)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.fillRect(0, 0, 256, 256); }), transparent: true, depthWrite: false }));
   bsh.rotation.x = -Math.PI / 2; bsh.position.y = 0.002; bsh.renderOrder = 2; box.add(bsh);
   // slots inside the box (box-local, bottom anchored) + widths in box units
-  const SLOT = { photo: [-0.95, T, 0.05, 1.25], fries: [0.25, T, -0.45, 0.62], sauce: [0.3, T, 0.5, 0.44], shake: [1.02, T, -0.05, 0.62] };
-  const BOX_OPEN = { rx: 0.62, ry: -0.3, lid: -1.95 }, BOX_FRONT = { rx: 0.14, ry: 0.0, lid: 0 };
+  const SLOT = { photo: [-0.89, INS.burger, 0.06, 1.4], burger: [-0.89, INS.burger, 0.06, 0], fries: [0.3, INS.fries, -0.46, 0], dipO: [0.12, INS.dips, 0.46, 0], dipD: [0.5, INS.dips, 0.66, 0], shake: [1.14, INS.shake, 0.04, 0] };
+  const BOX_OPEN = { rx: 0.47, ry: -0.24, lid: -1.74 }, BOX_FRONT = { rx: 0.2, ry: 0.0, lid: 0 };
 
+  await yieldMain();
+  /* ---------- real 3D food (geometry + PBR, no billboards) ---------- */
+  const FM = THREE.mats();
+  const trayMat = M({ color: 0x151515, roughness: 0.72 }); const lineMat = new THREE.MeshBasicMaterial({ color: OR });
+  const [shakeTex, sauceTex] = await Promise.all([tex('assets/img/i_shake.webp'), tex('assets/img/i_sauce.webp')]);
+  const burger3 = THREE.wrapGroup(THREE.photoLathe(photoTex.image, photoTex, { unit: 1.1, step: 4, win: 3, mat: { roughness: 0.5 } }));
+  const fries = THREE.buildFries(FM, trayMat, lineMat);
+  // dips: photo cup + a glossy sauce surface you can see from above
+  const dip = (img, t, col, rough) => { const m = THREE.photoLathe(img, t, { unit: 0.4, step: 3, win: 1, open: 0.0, mat: { roughness: 0.3, side: 2 } }); m.geometry.dispose(); const m2 = THREE.photoLathe(img, t, { unit: 0.4, step: 3, win: 1, open: 0.04, mat: { roughness: 0.3, side: 2 } }); m2.userData.radiusAt = m.userData.radiusAt; m2.userData.h = m.userData.h; m2.userData.w = m.userData.w; const h = m.userData.h * 0.8, r = m.userData.radiusAt(h) * 0.97;
+    const top = new THREE.Mesh(new THREE.CircleGeometry(r, 40), new THREE.MeshStandardMaterial({ color: col, roughness: rough, metalness: 0 })); top.rotation.x = -Math.PI / 2; top.position.y = h; top.receiveShadow = true;
+    const dollop = new THREE.Mesh(new THREE.SphereGeometry(r * 0.35, 20, 10), top.material); dollop.scale.y = 0.35; dollop.position.set(r * 0.15, h, -r * 0.1);
+    return THREE.wrapGroup(m2, [top, dollop]); };
+  const dipO = dip(sauceTex.image, sauceTex, '#E99A55', 0.32);
+  const bbq = THREE.recolor(sauceTex.image, (r, g, b) => (r > g + 22 && g >= b) ? [r * 0.3, g * 0.13, b * 0.08] : null);
+  const dipD = dip(bbq.img, bbq.tex, '#3C140A', 0.14);
+  const shakeM = THREE.photoLathe(shakeTex.image, shakeTex, { unit: 0.64, step: 4, win: 2, mat: { roughness: 0.35 } });
+  const sH = shakeM.userData.h, sR = shakeM.userData.radiusAt(sH * 0.32);
+  const label = new THREE.Mesh(new THREE.CylinderGeometry(sR + 0.006, sR - 0.01, sH * 0.26, 32, 1, true, -0.62, 1.24), new THREE.MeshStandardMaterial({ map: canvasTex(256, 256, (g, w, h) => { g.clearRect(0, 0, w, h); badge(g, w / 2, h / 2, w * 0.42, '#F3EEE6', '#1d1d1d'); g.strokeStyle = '#1d1d1d'; g.lineWidth = 8; g.beginPath(); g.arc(w / 2, h / 2, w * 0.42, 0, 7); g.stroke(); }), transparent: true, roughness: 0.45 }));
+  label.position.y = sH * 0.32;
+  const stw = THREE.straw(); stw.scale.y = 0.8; stw.position.set(-0.05, sH * 0.93, -0.06); stw.rotation.z = 0.28;
+  const shake = THREE.wrapGroup(shakeM, [label, stw]);
+  const FOOD = { burger: burger3, fries, dipO, dipD, shake };
+  burger3.userData.k = 1.3; fries.userData.k = 1.0; shake.userData.k = 1.22; dipO.userData.k = dipD.userData.k = 1.05;
+  for (const k in FOOD) { scene.add(FOOD[k]); FOOD[k].visible = false; }
+
+  await yieldMain();
   /* ---------- fitting helpers ---------- */
   const v3 = new THREE.Vector3();
   let wpp = 1; // world units per px at z=0
@@ -358,17 +409,18 @@ async function initAnim() {
     const w = toWorld(cx, cy); const s = pxPerUnit * wpp;
     return { x: w.x, y: w.y - ((ex.top + ex.bot) / 2) * s, s };
   }
+  // free (light scene) poses around the reassembled burger, burger units: [x, y(centre), width]
   const COMBO_ITEMS = () => L.portrait
-    ? { fries: [-3.4, -2.2, 2.6], sauce: [2.6, -2.4, 1.7], shake: [3.0, -0.6, 2.0] }
-    : { fries: [-5.4, -2.0, 3.0], sauce: [3.4, -2.3, 2.0], shake: [4.6, -1.0, 2.4] };
+    ? { fries: [-2.0, 3.6, 1.8], dipO: [-0.4, 5.4, 0.95], dipD: [1.2, 4.6, 0.95], shake: [2.15, 1.2, 1.65] }
+    : { fries: [-4.1, 3.6, 2.3], dipO: [-1.3, 5.6, 1.05], dipD: [0.9, 4.7, 1.05], shake: [3.7, 1.4, 2.1] };
   function computeFits() {
     // hero: photo plane width = 4.9 local units; photo centre y = 0 in local space
     const hb = L.heroB; const s0 = (hb.w * wpp) / 4.9; const c = toWorld(hb.cx, hb.base - hb.h / 2);
     FIT.hero = { x: c.x, y: c.y, s: s0 };
-    FIT.smash = fitBurger(L.reg.smash, 1, 5.4, 0.92);
-    FIT.stack = fitBurger(L.reg.stack, 1, 5.4, 0.92);
+    FIT.smash = fitBurger(L.reg.smash, 0.42, 5.4, L.portrait ? 0.86 : 0.97);
+    FIT.stack = fitBurger(L.reg.stack, 0.62, 5.4, L.portrait ? 0.9 : 1.0);
     const it = COMBO_ITEMS(); const xs = [-2.6, 2.6], ys = [-2.4, 2.2];
-    for (const k in it) { const [x, y, w] = it[k]; xs.push(x - w / 2, x + w / 2); ys.push(y, y + w * 1.6); }
+    for (const k in it) { const [x, y, w] = it[k]; const h = w * FOOD[k].userData.h / FOOD[k].userData.w; xs.push(x - w / 2, x + w / 2); ys.push(y - h / 2, y + h / 2); }
     const wU = Math.max(...xs) - Math.min(...xs), hU = Math.max(...ys) - Math.min(...ys);
     const R = L.reg.combo; const ppu = Math.min((R.x1 - R.x0) * 0.9 / wU, (R.y1 - R.y0) * 0.85 / hU, L.vh * 0.42 / 4.1);
     const cc = toWorld((R.x0 + R.x1) / 2, (R.y0 + R.y1) / 2); const sC = ppu * wpp;
@@ -379,8 +431,7 @@ async function initAnim() {
   const tmpObj = new THREE.Object3D();
   function boxPoints(st, open) {
     const pts = []; for (const x of [-BW / 2, BW / 2]) for (const y of [0, BH]) for (const z of [-BD / 2, BD / 2]) pts.push([x, y, z]);
-    const a = st.lid; for (const x of [-BW / 2, BW / 2]) for (const zz of [0, BD]) pts.push([x, BH + Math.sin(-a) * zz, -BD / 2 + Math.cos(a) * zz]);
-    if (open) pts.push([SLOT.shake[0], 1.6, SLOT.shake[2]], [SLOT.photo[0], 1.1, SLOT.photo[2]]);
+    if (!open) { const a = st.lid; for (const x of [-BW / 2, BW / 2]) for (const zz of [0, BD]) pts.push([x, BH + Math.sin(-a) * zz, -BD / 2 + Math.cos(a) * zz]); }
     return pts;
   }
   function boxBBox(st, pos, s, open) {
@@ -426,6 +477,19 @@ async function initAnim() {
     m.position.set(x, y, z); m.scale.setScalar(Math.max(w, 1e-4));
     m.material.opacity = opacity; m.visible = opacity > 0.003;
   }
+  const qA = new THREE.Quaternion(), qB = new THREE.Quaternion(), eA = new THREE.Euler(), vS = new THREE.Vector3(), qSlot = new THREE.Quaternion();
+  function place3(o, local, slot, k, roll, yaw) {
+    // local: [x, yCentre, width] in burger units (free pose); slot: box-local [x, y, z]
+    const A = anchor(); const sF = Math.max(local[2] * A.s / o.userData.w, 1e-4);
+    let x = A.x + local[0] * A.s, y = A.y + local[1] * A.s - o.userData.h * sF * 0.5, z = 0.8, sc = sF;
+    eA.set(0.42 + mouse.y * 0.06, yaw + (S.spin - 0.5) * 0.9 + mouse.x * 0.2, roll); qA.setFromEuler(eA);
+    if (k > 0) {
+      vS.set(slot[0], slot[1], slot[2]); box.localToWorld(vS); const kk = ease(clamp01(k));
+      qSlot.setFromAxisAngle(vS.clone().set(0, 1, 0), yaw * 0.4); qB.copy(box.quaternion).multiply(qSlot);
+      x = lerp(x, vS.x, kk); y = lerp(y, vS.y, kk); z = lerp(z, vS.z, kk); sc = lerp(sF, box.scale.x * (o.userData.k || 1), kk); qA.slerp(qB, kk);
+    }
+    o.position.set(x, y, z); o.scale.setScalar(sc); o.quaternion.copy(qA);
+  }
   let tNow = 0;
   function update() {
     const A = anchor(); const e = S.explode; const sp = spreadOf(e);
@@ -452,21 +516,30 @@ async function initAnim() {
       const bx = lerp(o.x, f.x, fr), by = lerp(o.y, f.y, fr), bs = lerp(o.s, f.s, fr);
       box.position.set(bx, lerp(by - L.vh * wpp * 0.9, by, bIn), 0);
       box.scale.setScalar(bs);
-      box.rotation.set(lerp(BOX_OPEN.rx, BOX_FRONT.rx, fr) + mouse.y * 0.04, lerp(BOX_OPEN.ry - 0.5 * (1 - bIn), BOX_FRONT.ry, fr) + mouse.x * 0.08 + (S.spin - 0.72) * 0.35, 0);
+      box.rotation.set(lerp(BOX_OPEN.rx, BOX_FRONT.rx, fr) + mouse.y * 0.04, lerp(BOX_OPEN.ry - 0.5 * (1 - bIn), BOX_FRONT.ry, fr) + mouse.x * 0.08 + (S.spin - 0.72) * 0.35 * (1 - 0.85 * fr), 0);
       lidPivot.rotation.x = lerp(BOX_OPEN.lid, BOX_FRONT.lid, ease(clamp01(S.lid)));
       box.updateMatrixWorld(true);
     }
-    // photo burger + side items
+    // photo burger (light scene) → real 3D burger once it is in the box; 3D fries, dips and shake
     const it = COMBO_ITEMS(); const kIt = S.items; const itE = 1 - Math.pow(1 - clamp01(kIt), 3);
     const kBox = clamp01((S.boxIn - 0.12) / 0.88);
-    const lidHide = 1 - clamp01((S.lid - 0.3) / 0.35), lidHideShake = 1 - clamp01((S.lid - 0.12) / 0.3);
-    // photo: centred burger (local y offset so its bottom matches bottom bun)
-    placeItem(photo, [0, -2.02 + 0.12 * S.hz * (1 - S.items), 4.9 * (1 + 0.05 * S.hz * (1 - S.items))], SLOT.photo, 1, kBox, S.photo * lidHide);
+    const inBox = S.lid < 0.93 ? 1 : 0, lidHideShake = 1 - clamp01((S.lid - 0.12) / 0.3);
+    const b3 = clamp01((kBox - 0.3) / 0.35); // photo → 3D crossfade while the box flies in
+    placeItem(photo, [0, -2.02 + 0.12 * S.hz * (1 - S.items), 4.9 * (1 + 0.05 * S.hz * (1 - S.items))], SLOT.photo, 1, kBox, S.photo * (1 - b3) * inBox);
+    place3(burger3, [0, -0.1, 4.9 * 1.02], SLOT.burger, kBox, 0, -0.35);
+    THREE.setOpacity(burger3, b3 * inBox * S.photo);
     const fly = (p, from) => [lerp(from[0], p[0], itE), lerp(from[1], p[1], itE), p[2]];
-    placeItem(fries, fly(it.fries, [-16, -9]), SLOT.fries, 1, kBox, clamp01(kIt * 3) * lidHide);
-    placeItem(sauce, fly(it.sauce, [14, -10]), SLOT.sauce, 1, kBox, clamp01(kIt * 3) * lidHide);
-    placeItem(shake, fly(it.shake, [16, 8]), SLOT.shake, 1, kBox, clamp01(kIt * 3) * lidHideShake);
-    fries.rotation.z = (1 - itE) * 0.8 * (1 - kBox); shake.rotation.z = -(1 - itE) * 0.6 * (1 - kBox); sauce.rotation.z = (1 - itE) * -0.9 * (1 - kBox);
+    const FROM = { fries: [-16, 9], dipO: [-6, 16], dipD: [8, 15], shake: [17, 4] }, SPIN = { fries: -0.5, dipO: 0.3, dipD: -0.2, shake: 0.4 };
+    for (const k of ['fries', 'dipO', 'dipD', 'shake']) {
+      place3(FOOD[k], fly(it[k], FROM[k]), SLOT[k], kBox, (1 - itE) * (k === 'shake' ? -0.7 : 0.8), SPIN[k]);
+      THREE.setOpacity(FOOD[k], clamp01(kIt * 2.5) * (k === 'shake' ? lidHideShake : inBox));
+    }
+    // key light + shadow frustum follow the box
+    if (box.visible || burger3.visible) {
+      const bs = box.scale.x; sun.target.position.copy(box.position); sun.position.set(box.position.x - 3 * bs, box.position.y + 6 * bs, box.position.z + 5 * bs);
+      const sc = sun.shadow.camera, ext = 2.4 * bs;
+      if (Math.abs(sc.right - ext) > 1e-3) { sc.left = -ext; sc.right = ext; sc.top = ext; sc.bottom = -ext; sc.near = 0.5 * bs; sc.far = 16 * bs; sc.updateProjectionMatrix(); }
+    }
 
     // stack labels follow the layers' right edges
     const lOp = gsap.getProperty(labelsEl, 'opacity');
@@ -485,6 +558,10 @@ async function initAnim() {
     if (!pinned && tl.scrollTrigger.progress >= 1 && stage.getBoundingClientRect().bottom < 0) return;
     update(); renderer.render(scene, camera); dirty = false;
   }
+  // compile every material up front (in parallel where the GPU driver allows) so nothing hitches mid-scroll
+  { const hid = []; scene.traverse(o => { if (!o.visible) { hid.push(o); o.visible = true; } });
+    try { await (renderer.compileAsync ? renderer.compileAsync(scene, camera) : renderer.compile(scene, camera)); } catch (e) {}
+    hid.forEach(o => { o.visible = false; }); await yieldMain(); }
   resize();
   update(); renderer.render(scene, camera);
   canvas.classList.add('on'); heroImg.classList.add('off');
@@ -497,7 +574,7 @@ async function initAnim() {
   window.__bb = () => {
     const out = {}; const bbox = (m) => { if (!m.visible) return null; const b = new THREE.Box3(); m.updateMatrixWorld(true); m.traverseVisible(o => { if (o.isMesh) { o.geometry.computeBoundingBox(); b.union(o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld)); } }); let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9; for (const x of [b.min.x, b.max.x]) for (const y of [b.min.y, b.max.y]) for (const z of [b.min.z, b.max.z]) { const q = toScreen(new THREE.Vector3(x, y, z)); x0 = Math.min(x0, q.x); x1 = Math.max(x1, q.x); y0 = Math.min(y0, q.y); y1 = Math.max(y1, q.y); } return { x0, y0, x1, y1 }; };
     out.layers = layers.some(l => l.visible) ? layers.map(bbox).filter(Boolean) : [];
-    out.photo = bbox(photo); out.fries = bbox(fries); out.sauce = bbox(sauce); out.shake = bbox(shake); bsh.visible = false; out.box = box.visible ? bbox(box) : null; bsh.visible = true;
+    out.photo = bbox(photo); out.burger3 = bbox(burger3); out.fries = bbox(fries); out.dipO = bbox(dipO); out.dipD = bbox(dipD); out.shake = bbox(shake); bsh.visible = false; out.box = box.visible ? bbox(box) : null; bsh.visible = true;
     return out;
   };
   window.__S = S;
