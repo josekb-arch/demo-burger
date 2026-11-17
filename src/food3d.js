@@ -60,7 +60,7 @@ export function foodMats() {
     bunCut: new MeshStandardMaterial({ map: bunCut, bumpMap: crumb, bumpScale: 1.4, roughness: 0.9 }),
     seed: new MeshStandardMaterial({ color: '#F2E3BF', roughness: 0.55 }),
     patty: new MeshStandardMaterial({ map: patty, bumpMap: pattyB, bumpScale: 2.4, roughness: 0.8 }),
-    cheese: new MeshPhysicalMaterial({ color: '#F6A916', roughness: 0.3, clearcoat: 0.45, clearcoatRoughness: 0.2, sheen: 0.35, sheenColor: new Color('#ffd27a'), side: DoubleSide }),
+    cheese: new MeshPhysicalMaterial({ color: '#F7B21E', roughness: 0.3, clearcoat: 0.45, clearcoatRoughness: 0.2, sheen: 0.35, sheenColor: new Color('#ffd27a'), side: DoubleSide }),
     onion: new MeshPhysicalMaterial({ color: '#7A3E15', roughness: 0.35, clearcoat: 0.7, clearcoatRoughness: 0.25 }),
     sauce: new MeshPhysicalMaterial({ color: '#E9975A', roughness: 0.22, clearcoat: 0.9, clearcoatRoughness: 0.15 }),
     lettuce: new MeshPhysicalMaterial({ color: '#4E8A26', roughness: 0.45, clearcoat: 0.3, side: DoubleSide, sheen: 0.4, sheenColor: new Color('#d8f5a0') }),
@@ -71,7 +71,7 @@ export function foodMats() {
     dipD: new MeshPhysicalMaterial({ color: '#5C1B0C', roughness: 0.1, clearcoat: 1, clearcoatRoughness: 0.05, bumpMap: swirl, bumpScale: 1.2 }),
     cream: new MeshPhysicalMaterial({ color: '#EFE7DD', roughness: 0.62, bumpMap: crumb, bumpScale: 1.6, sheen: 0.4, sheenColor: new Color('#ffffff') }),
     oreo: new MeshStandardMaterial({ color: '#1C1512', roughness: 0.75, bumpMap: crumb, bumpScale: 2 }),
-    clear: new MeshPhysicalMaterial({ color: '#ffffff', roughness: 0.05, metalness: 0, clearcoat: 1, transparent: true, opacity: 0.2, depthWrite: false, side: DoubleSide }),
+    clear: new MeshPhysicalMaterial({ color: '#ffffff', roughness: 0.05, metalness: 0, clearcoat: 1, transparent: true, opacity: 0.12, depthWrite: false, side: DoubleSide }),
     straw: new MeshPhysicalMaterial({ color: '#F06A10', roughness: 0.28, clearcoat: 0.7 }),
     tray: new MeshStandardMaterial({ color: '#141414', roughness: 0.75 }),
   };
@@ -86,7 +86,7 @@ function cheeseSlice(M, size, droop, R, rot) {
     let x = p.getX(i), z = p.getZ(i); const r = Math.hypot(x, z); let yy = 0.006;
     if (r > R) { // melted: folds down over the patty edge, the corners drip further
       const over = r - R, k = R / r, corner = Math.pow(Math.max(Math.abs(x), Math.abs(z)) / (size / 2), 5);
-      yy = -Math.min(over * 1.5, droop * (0.55 + corner * 0.8)); const pull = 1 - Math.min(1, over * 1.6) * 0.6;
+      yy = -Math.min(over * 1.3, droop * (0.6 + corner * 0.5)); const pull = 1 - Math.min(1, over * 1.6) * 0.6;
       x = x * (k + (1 - k) * pull * 0.55); z = z * (k + (1 - k) * pull * 0.55);
     }
     yy += Math.sin(x * 11) * Math.cos(z * 9) * 0.006; p.setXYZ(i, x, yy, z);
@@ -124,13 +124,13 @@ export function burgerLayers() {
   }
   const onions = L(0.08, on);
   // patties with melted American cheese draping over
-  const pattyL = (rot) => L(0.165, at(new Mesh(jitter(new CylinderGeometry(0.58, 0.56, 0.15, 56, 3), 0.05, 8, -1e9, rot * 3), M.patty), 0.075), at(cheeseSlice(M, 0.9, 0.15, 0.52, rot), 0.15));
+  const pattyL = (rot) => L(0.165, at(new Mesh(jitter(new CylinderGeometry(0.58, 0.56, 0.15, 56, 3), 0.05, 8, -1e9, rot * 3), M.patty), 0.075), at(cheeseSlice(M, 1.0, 0.2, 0.53, rot), 0.15));
   const p1 = pattyL(0.35), p2 = pattyL(-0.45);
   // bottom bun, toasted cut side up
   const bot = L(0.19, new Mesh(lathe(puck(0.53, 0.19, 0.07)), M.bunBot), at(new Mesh(new CircleGeometry(0.5, 40).rotateX(-Math.PI / 2), M.bunCut), 0.191));
   // lettuce: wavy leaf that overhangs the patty
   const lg = new PlaneGeometry(1.4, 1.4, 34, 34); lg.rotateX(-Math.PI / 2);
-  { const p = lg.attributes.position; for (let i = 0; i < p.count; i++) { let x = p.getX(i), z = p.getZ(i); const r = Math.hypot(x, z), a = Math.atan2(z, x); const rim = 0.585 + 0.03 * Math.sin(a * 5 + 1) + 0.02 * Math.sin(a * 11); const f = Math.max(0, r - 0.42);
+  { const p = lg.attributes.position; for (let i = 0; i < p.count; i++) { let x = p.getX(i), z = p.getZ(i); const r = Math.hypot(x, z), a = Math.atan2(z, x); const rim = 0.6 + 0.03 * Math.sin(a * 5 + 1) + 0.02 * Math.sin(a * 11); const f = Math.max(0, r - 0.42);
       let y = 0.015 + Math.sin(a * 13 + r * 9) * 0.04 * Math.min(1, f * 6) - f * f * 0.9; if (r > rim) { const k = rim / r; x *= k; z *= k; y -= (r - rim) * 0.2; } p.setXYZ(i, x, y, z); } lg.computeVertexNormals(); }
   const lettuce = L(0.05, new Mesh(lg, M.lettuce));
   // tomato: two slices with a procedural cut face
@@ -152,15 +152,15 @@ export function buildFries3D() {
   const wall = (w, h, d, x, y, z) => { const m = new Mesh(new BoxGeometry(w, h, d), M.tray); m.position.set(x, y, z); tray.add(m); };
   wall(W, t, D, 0, t / 2, 0); wall(W, H, t, 0, H / 2, D / 2); wall(W, H * 0.8, t, 0, H * 0.4, -D / 2); wall(t, H, D, W / 2, H / 2, 0); wall(t, H, D, -W / 2, H / 2, 0);
   // slightly curved, square-section stick with chamfered corners
-  const geo = new BoxGeometry(0.072, 1, 0.066, 1, 6, 1); geo.translate(0, 0.5, 0);
+  const geo = new BoxGeometry(0.085, 1, 0.078, 1, 6, 1); geo.translate(0, 0.5, 0);
   { const p = geo.attributes.position; for (let i = 0; i < p.count; i++) { const y = p.getY(i); p.setX(i, p.getX(i) * (0.92 + 0.08 * Math.sin(y * 3)) + Math.sin(y * Math.PI) * 0.035); p.setZ(i, p.getZ(i) * (0.95 + 0.05 * Math.cos(y * 4))); } geo.computeVertexNormals(); }
-  const N = 30; const fr = new InstancedMesh(geo, M.fry, N); const o = new Object3D();
+  const N = 28; const fr = new InstancedMesh(geo, M.fry, N); const o = new Object3D();
   for (let i = 0; i < N; i++) {
     const Lh = rr(0.5, 0.82); const x = rr(-W / 2 + 0.06, W / 2 - 0.06), z = rr(-D / 2 + 0.06, D / 2 - 0.06);
     o.position.set(x, 0.02, z);
     const lean = rr(0.15, 0.75), dir = Math.atan2(z, x) + rr(-0.6, 0.6); // leaning outwards, a loose golden bunch
     o.rotation.set(Math.sin(dir) * lean, rnd() * 6.28, -Math.cos(dir) * lean); o.scale.set(rr(0.8, 1.25), Lh, rr(0.8, 1.25)); o.updateMatrix(); fr.setMatrixAt(i, o.matrix);
-    fr.setColorAt(i, new Color().setHSL(0.095 + rr(-0.012, 0.01), rr(0.8, 0.95), rr(0.6, 0.76)));
+    fr.setColorAt(i, new Color().setHSL(0.088 + rr(-0.012, 0.01), rr(0.85, 1), rr(0.56, 0.7)));
   }
   g.add(fr); shadowed(g);
   g.userData = { w: W + 0.25, h: 0.85, tray };
@@ -173,7 +173,7 @@ export function buildDip3D(dark) {
   const R = 0.2, H = 0.1, T = 0.016;
   const prof = [[0, 0], [R - 0.02, 0], [R, 0.012], [R + 0.006, H - 0.012], [R, H], [R - T, H - 0.004], [R - T - 0.002, 0.02], [0, 0.018]];
   g.add(new Mesh(lathe(prof, 48), M.ceramic));
-  const sp = [[0, H + 0.004], [R * 0.55, H - 0.002], [R - T - 0.002, H - 0.012]];
+  const sp = [[R - T - 0.002, H - 0.014], [R * 0.75, H - 0.006], [R * 0.4, H - 0.001], [0, H + 0.002]]; // outer → centre so the surface faces up
   const sauce = new Mesh(lathe(sp, 40), dark ? M.dipD : M.dipO); g.add(sauce);
   const dollop = new Mesh(new SphereGeometry(R * 0.34, 20, 10), dark ? M.dipD : M.dipO); dollop.scale.y = 0.32; dollop.position.set(R * 0.12, H - 0.004, -R * 0.08); g.add(dollop);
   shadowed(g); g.userData = { w: (R + 0.01) * 2, h: H + 0.02 }; return g;
@@ -183,8 +183,8 @@ export function buildDip3D(dark) {
 export function buildShake3D(badgeTex) {
   const M = foodMats(); seed = 3; const g = new Group();
   const R0 = 0.23, R1 = 0.29, H = 0.74;
-  const body = ctex(512, 256, (gg, w, h) => { gg.fillStyle = '#EDE3D6'; gg.fillRect(0, 0, w, h); speckle(gg, w, h, 900, '#3a2a22', 0.8, 2.6, 0.25, 0.7);
-    gg.fillStyle = '#3A1C0F'; for (let i = 0; i < 18; i++) { const x = rnd() * w, len = rr(0.3, 0.8) * h, wd = rr(4, 11); gg.globalAlpha = rr(0.75, 1); gg.beginPath(); gg.moveTo(x - wd / 2, 0); gg.bezierCurveTo(x - wd, len * 0.4, x + wd * 0.3, len * 0.7, x, len); gg.bezierCurveTo(x + wd * 0.6, len * 0.7, x + wd, len * 0.3, x + wd / 2, 0); gg.fill(); }
+  const body = ctex(512, 256, (gg, w, h) => { gg.fillStyle = '#E9DAC6'; gg.fillRect(0, 0, w, h); speckle(gg, w, h, 1400, '#2a1a12', 0.8, 3.2, 0.3, 0.8);
+    gg.fillStyle = '#3A1C0F'; for (let i = 0; i < 22; i++) { const x = rnd() * w, len = rr(0.35, 0.9) * h, wd = rr(9, 20); gg.globalAlpha = rr(0.75, 1); gg.beginPath(); gg.moveTo(x - wd / 2, 0); gg.bezierCurveTo(x - wd, len * 0.4, x + wd * 0.3, len * 0.7, x, len); gg.bezierCurveTo(x + wd * 0.6, len * 0.7, x + wd, len * 0.3, x + wd / 2, 0); gg.fill(); }
     gg.globalAlpha = 1; gg.fillRect(0, 0, w, 12); });
   const shakeM = new MeshPhysicalMaterial({ map: body, roughness: 0.55, sheen: 0.2 });
   g.add(new Mesh(new CylinderGeometry(R1 - 0.012, R0 - 0.012, H - 0.02, 40, 1, false), shakeM)).position.y = H / 2;
@@ -195,8 +195,8 @@ export function buildShake3D(badgeTex) {
   const cp = []; for (let i = 0; i <= 10; i++) { const a = (i / 10) * Math.PI / 2; cp.push([(R1 - 0.01) * Math.cos(a), 0.2 * Math.sin(a)]); } cp[cp.length - 1][0] = 0;
   const cg = lathe(cp, 40); { const p = cg.attributes.position; for (let i = 0; i < p.count; i++) { const x = p.getX(i), y = p.getY(i), z = p.getZ(i); const a = Math.atan2(z, x); const k = 1 + 0.06 * Math.sin(a * 7 + y * 30) * Math.min(1, y * 8); p.setXYZ(i, x * k, y * (1 + 0.08 * Math.sin(a * 5)), z * k); } cg.computeVertexNormals(); }
   const cream = new Mesh(cg, M.cream); cream.position.y = H - 0.01; g.add(cream);
-  const crumbs = new InstancedMesh(new IcosahedronGeometry(0.04, 0), M.oreo, 80); const o = new Object3D();
-  for (let i = 0; i < 80; i++) { const a = rnd() * 6.28, t = Math.sqrt(rnd()) * 0.92; const r = (R1 - 0.02) * t; o.position.set(Math.cos(a) * r, H - 0.01 + 0.2 * Math.sqrt(Math.max(0, 1 - t * t)) + 0.006, Math.sin(a) * r); o.rotation.set(rnd() * 3, rnd() * 3, rnd() * 3); o.scale.set(rr(0.7, 1.7), rr(0.45, 0.9), rr(0.7, 1.7)); o.updateMatrix(); crumbs.setMatrixAt(i, o.matrix); }
+  const crumbs = new InstancedMesh(new IcosahedronGeometry(0.045, 0), M.oreo, 120); const o = new Object3D();
+  for (let i = 0; i < 120; i++) { const a = rnd() * 6.28, t = Math.sqrt(rnd()) * 0.92; const r = (R1 - 0.02) * t; o.position.set(Math.cos(a) * r, H - 0.01 + 0.2 * Math.sqrt(Math.max(0, 1 - t * t)) + 0.006, Math.sin(a) * r); o.rotation.set(rnd() * 3, rnd() * 3, rnd() * 3); o.scale.set(rr(0.7, 1.7), rr(0.45, 0.9), rr(0.7, 1.7)); o.updateMatrix(); crumbs.setMatrixAt(i, o.matrix); }
   g.add(crumbs);
   for (let i = 0; i < 3; i++) { const c = new Mesh(new CylinderGeometry(0.075, 0.075, 0.022, 20), M.oreo); const a = i * 2.1 + 0.4; c.position.set(Math.cos(a) * 0.12, H + 0.16 - i * 0.02, Math.sin(a) * 0.12); c.rotation.set(rr(-0.9, 0.9), 0, rr(-0.9, 0.9)); g.add(c); }
   const lid = new Mesh(new SphereGeometry(R1 + 0.012, 40, 14, 0, Math.PI * 2, 0, Math.PI / 2), M.clear); lid.scale.y = 0.95; lid.position.y = H; lid.renderOrder = 46; g.add(lid);

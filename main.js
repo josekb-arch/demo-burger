@@ -266,7 +266,7 @@ async function initAnim() {
   const BL = THREE.burgerLayers(); await yieldMain();
   const layers = [BL.top, BL.sauce, BL.onions, BL.p1, BL.p2, BL.bot]; // label order, top → bottom
   const extras = [BL.lettuce, BL.tomato]; // only on the assembled combo burger (z020/z024)
-  const ORDER3 = [BL.bot, BL.p2, BL.p1, BL.onions, BL.tomato, BL.lettuce, BL.sauce, BL.top]; // bottom → top
+  const ORDER3 = [BL.bot, BL.lettuce, BL.tomato, BL.p2, BL.p1, BL.onions, BL.sauce, BL.top]; // lettuce + tomato on the heel, so the onions show under the crown like z024 // bottom → top
   ORDER3.forEach(m => b3.add(m)); b3.visible = false;
   const R3 = [0.56, 0.53, 0.56, 0.6, 0.6, 0.53]; // label anchor radius per layer (box units)
   const GAP = 1.58 / U; // exploded gap per unit of S.explode
