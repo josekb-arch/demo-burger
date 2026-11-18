@@ -242,7 +242,7 @@ async function initAnim() {
     const later = () => setTimeout(() => (window.requestIdleCallback ? requestIdleCallback(go, { timeout: 2000 }) : go()), 6000);
     if (document.readyState === 'complete') later(); else addEventListener('load', later, { once: true });
   });
-  const THREE = await import('./vendor/three-app.js?v=9');
+  const THREE = await import('./vendor/three-app.js?v=10');
   const canvas = $('#gl');
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'high-performance' });
   renderer.setClearColor(0x000000, 0);
@@ -250,7 +250,11 @@ async function initAnim() {
   renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFShadowMap; renderer.shadowMap.autoUpdate = false; // v9: cheaper filter, updated every other rendered frame
   const scene = new THREE.Scene();
   await yieldMain();
-  scene.environment = THREE.studioEnv(renderer); scene.environmentIntensity = 0.85;
+  // v10: real HDRI (Poly Haven "Studio Small 09", CC0, downsampled to 256x128) + ACES filmic tone mapping
+  try { const pm = new THREE.PMREMGenerator(renderer); const hdr = await new THREE.RGBELoader().loadAsync('assets/env/studio_small_09_256.hdr?v=10');
+    scene.environment = pm.fromEquirectangular(hdr).texture; hdr.dispose(); pm.dispose(); }
+  catch (err) { scene.environment = THREE.studioEnv(renderer); }
+  scene.environmentIntensity = 0.9; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
   await yieldMain();
   const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 100);
   camera.position.set(0, 0, 10); camera.updateMatrixWorld(true);
@@ -261,24 +265,23 @@ async function initAnim() {
   const loader = new THREE.TextureLoader();
   const tex = (u) => new Promise((res, rej) => loader.load(u, t => { t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; res(t); }, undefined, rej));
 
-  const photoTex = await tex('assets/img/burger.webp');
+  /* v10: photoreal food. Every piece is a real-looking photo cut-out turned into a 3D photo relief (src/relief.js):
+     rounded height field from the silhouette, darker mirrored back, HDRI shading and real cast/contact shadows. */
+  const LAY = [ // stack layers (source px in the 720x1280 exploded reference): name, x, y, w, h
+    ['l_topbun', 145, 96, 431, 210], ['l_sauce', 144, 336, 428, 105], ['l_onions', 125, 441, 461, 153],
+    ['l_patty1', 117, 594, 482, 172], ['l_patty2', 117, 766, 487, 192], ['l_botbun', 161, 958, 399, 202],
+  ];
+  const CX = 360, CY = 628;
+  const [photoTex, layerTex] = await Promise.all([tex('assets/img/burger.webp?v=10'), Promise.all(LAY.map(l => tex(`assets/img/${l[0]}.webp?v=10`)))]);
   const burger = new THREE.Group(); scene.add(burger);
   const planeMat = (t) => new THREE.MeshBasicMaterial({ map: t, transparent: true, depthWrite: false, toneMapped: false });
-  /* v7: the stack is real geometry (src/food3d.js). Built in box units; U converts to the hero photo's burger units (~4.5 wide). */
-  const U = 4.0;
-  const b3 = new THREE.Group(); burger.add(b3); b3.scale.setScalar(U);
-  const BL = THREE.burgerLayers(); await yieldMain();
-  const layers = [BL.top, BL.sauce, BL.onions, BL.p1, BL.p2, BL.bot]; // label order, top → bottom
-  const extras = []; // v8: no lettuce/tomato, like z020/z024
-  const ORDER3 = [BL.bot, BL.p2, BL.p1, BL.onions, BL.sauce, BL.top]; // bottom → top
-  ORDER3.forEach(m => b3.add(m)); b3.visible = false;
-  const R3 = [0.58, 0.7, 0.7, 0.7, 0.72, 0.72]; // v9: one label column clear of the wide bottom patty // label anchor radius per layer (box units)
-  const GAP = 0.68 / U; // v9: compact like z016 // exploded gap per unit of S.explode
-  function stackLayout(e, lt) { // y (bottom) per layer in b3 units; returns total height
-    let y = 0; const out = new Map();
-    ORDER3.forEach((m, j) => { const ex = extras.includes(m); const h = m.userData.h * (ex ? lt : 1); out.set(m, y); y += h + (ex ? 0 : (j < ORDER3.length - 1 ? GAP * e : 0)); });
-    return { y: out, total: y };
-  }
+  const U = 4.0; // burger units (hero photo ≈ 4.9 wide) per box unit
+  const b3 = new THREE.Group(); burger.add(b3); b3.scale.setScalar(U); b3.visible = false;
+  const layers = LAY.map((l, i) => { const r = THREE.photoRelief(layerTex[i], { w: l[3] / 100 / U, depth: i === 1 ? 0.06 : 0.14, seg: 48, round: 0.5 });
+    r.userData.base = { x: (l[1] + l[3] / 2 - CX) / 100 / U, y: -(l[2] + l[4] / 2 - CY) / 100 / U }; b3.add(r); return r; });
+  await yieldMain();
+  const closed = THREE.photoRelief(photoTex, { w: 4.9 / U, depth: 0.26, seg: 72, round: 0.45 }); b3.add(closed); // the reassembled burger (same photo as the hero)
+  const spreadOf = (e) => 0.3 + 0.85 * e;
   // shadow under the burger on the paper
   const shCan = document.createElement('canvas'); shCan.width = 256; shCan.height = 64;
   { const g = shCan.getContext('2d'); const gr = g.createRadialGradient(128, 32, 4, 128, 32, 120); gr.addColorStop(0, 'rgba(0,0,0,.75)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.setTransform(1, 0, 0, 0.27, 0, 23); g.fillStyle = gr; g.fillRect(0, 0, 256, 256); }
@@ -288,7 +291,7 @@ async function initAnim() {
 
   // bottom-anchored billboard items (photo burger, fries, sauce, shake). Unit = 1 world unit wide.
   function item(t, w, h) { const g = new THREE.PlaneGeometry(1, h / w); g.translate(0, h / w / 2, 0); const m = new THREE.Mesh(g, planeMat(t)); m.renderOrder = 30; scene.add(m); return m; }
-  const photo = item(photoTex, 800, 659);
+  const photo = item(photoTex, 800, 659); photo.visible = false; // v10: the hero burger is the photo relief itself
 
   /* ---------- the box (procedural, canvas textures) ---------- */
   await document.fonts.load('100px Anton'); await yieldMain();
@@ -387,20 +390,23 @@ async function initAnim() {
 
   await yieldMain();
   const blob = canvasTex(256, 128, (g, w, h) => { const gr = g.createRadialGradient(w / 2, h / 2, 2, w / 2, h / 2, w / 2); gr.addColorStop(0, 'rgba(0,0,0,.85)'); gr.addColorStop(0.55, 'rgba(0,0,0,.4)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.setTransform(1, 0, 0, 0.5, 0, h / 4); g.fillStyle = gr; g.fillRect(0, 0, w, w); });
-  // v7: real 3D combo food — geometry + PBR materials (src/food3d.js), soft contact blob + real shadow-map shadows
-  const cupBadge = canvasTex(256, 256, (g) => { badge(g, 128, 128, 100, 'rgba(225,210,200,0.22)', '#1e120c'); g.strokeStyle = '#1e120c'; g.lineWidth = 5; g.beginPath(); g.arc(128, 128, 104, 0, 7); g.stroke(); }); // dark ink stamp like z024
-  function food(o, shW) {
-    const sh = new THREE.Mesh(new THREE.PlaneGeometry(shW, shW * 0.8), new THREE.MeshBasicMaterial({ map: blob, transparent: true, depthWrite: false, opacity: 0.55 }));
-    sh.rotation.x = -Math.PI / 2; sh.position.y = 0.004; sh.renderOrder = 3; o.add(sh); o.userData.sh = sh; scene.add(o); o.visible = false; return o;
+  // v10: photoreal fries / dips / shake as photo reliefs, with a soft contact blob under each
+  const [trayT, friesT, dipOT, dipDT, shakeT] = await Promise.all(['p_tray', 'p_fries', 'p_dipo', 'p_dipd', 'p_shake'].map(n => tex(`assets/img/${n}.webp?v=10`)));
+  function food(parts, shW) {
+    const o = new THREE.Group(); parts.forEach(p => o.add(p));
+    const sh = new THREE.Mesh(new THREE.PlaneGeometry(shW, shW * 0.6), new THREE.MeshBasicMaterial({ map: blob, transparent: true, depthWrite: false, opacity: 0.55 }));
+    sh.rotation.x = -Math.PI / 2; sh.position.set(0, 0.004, 0.05); sh.renderOrder = 3; o.add(sh);
+    o.userData = { w: parts[0].userData.w, h: Math.max(...parts.map(p => p.userData.h)), sh, parts }; scene.add(o); o.visible = false; return o;
   }
-  const fries = food(THREE.buildFries3D(), 1.0); await yieldMain();
-  const dipO = food(THREE.buildDip3D(false), 0.6), dipD = food(THREE.buildDip3D(true), 0.6);
-  const shake = food(THREE.buildShake3D(cupBadge), 0.8); await yieldMain();
+  const trayR = THREE.photoRelief(trayT, { w: 1, depth: 0.2, round: 0.35 }), pileR = THREE.photoRelief(friesT, { w: 1, depth: 0.12, round: 0.3 });
+  const fries = food([trayR, pileR], 0.95); fries.userData.tray = trayR; fries.userData.pile = pileR; await yieldMain();
+  const dipO = food([THREE.photoRelief(dipOT, { w: 1, depth: 0.22, round: 0.45, seg: 40 })], 1.0), dipD = food([THREE.photoRelief(dipDT, { w: 1, depth: 0.22, round: 0.45, seg: 40 })], 1.0);
+  const shake = food([THREE.photoRelief(shakeT, { w: 1, depth: 0.42, round: 0.55, dome: 0.1 })], 0.9); await yieldMain();
   const burgerSh = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 1.1), new THREE.MeshBasicMaterial({ map: blob, transparent: true, depthWrite: false, opacity: 0 }));
   burgerSh.rotation.x = -Math.PI / 2; burgerSh.renderOrder = 3; box.add(burgerSh); burgerSh.position.set(SLOT.burger[0], SLOT.burger[1] + 0.004, SLOT.burger[2]);
   const FOOD = { fries, dipO, dipD, shake };
   fries.userData.lift = 1.7; dipO.userData.lift = dipD.userData.lift = 1.1; shake.userData.lift = 0.5;
-  fries.userData.k = 1.0; shake.userData.k = 0.95; dipO.userData.k = dipD.userData.k = 1.25; const KB = 1.05; // burger scale in the box
+  fries.userData.k = 0.95; shake.userData.k = 0.8; dipO.userData.k = dipD.userData.k = 0.54; const KB = 1.4 / (4.9 / U); // sizes as in v5/v6 (z024)
   // free-pose widths are in burger units; make the sizes follow real proportions
   await yieldMain();
   /* ---------- fitting helpers ---------- */
@@ -416,7 +422,7 @@ async function initAnim() {
   const toWorld = (px, py) => ({ x: (px - L.vw / 2) * wpp, y: (L.vh / 2 - py) * wpp });
   const toScreen = (v) => { v3.copy(v).project(camera); return { x: (v3.x + 1) / 2 * L.vw, y: (1 - v3.y) / 2 * L.vh }; };
   // burger content extents in local units
-    function burgerExtent(e) { const h = stackLayout(e, 0).total * U * (1 + 0.12 * e); return { top: h / 2 + 0.3, bot: -h / 2 - 0.3 }; }
+    function burgerExtent(e) { const sp = spreadOf(e); const t = LAY[0], b = LAY[5]; return { top: -(t[2] - CY) / 100 * sp + (sp < 0.5 ? 0.6 : 0), bot: -(b[2] + b[4] - CY) / 100 * sp - (sp < 0.5 ? 0.6 : 0) }; }
   const FIT = {};
   function fitBurger(R, e, wUnits = 5.2, fill = 0.9) {
     const ex = burgerExtent(e); const hU = (ex.top - (ex.bot)) + (e > 0.5 ? 2.1 : 0);
@@ -428,8 +434,8 @@ async function initAnim() {
   }
   // free (light scene) poses around the reassembled burger, burger units: [x, y(centre), width]
   const COMBO_ITEMS = () => L.portrait
-    ? { fries: [-1.9, 3.4, 1.9], dipO: [-0.3, 5.4, 0.95], dipD: [0.7, 5.3, 1.0], shake: [2.15, 1.2, 1.35] }
-    : { fries: [-4.4, 0.6, 3.0], dipO: [-0.6, 5.3, 1.25], dipD: [0.8, 5.1, 1.3], shake: [3.9, 1.0, 2.1] };
+    ? { fries: [-1.9, 3.4, 1.7], dipO: [-0.3, 5.4, 0.95], dipD: [0.7, 5.3, 1.0], shake: [2.15, 1.2, 1.65] }
+    : { fries: [-4.7, 0.9, 3.0], dipO: [-0.6, 5.3, 1.0], dipD: [0.7, 5.2, 1.1], shake: [3.9, 1.5, 3.1] };
   function computeFits() {
     // hero: photo plane width = 4.9 local units; photo centre y = 0 in local space
     const hb = L.heroB; const s0 = (hb.w * wpp) / 4.9; const c = toWorld(hb.cx, hb.base - hb.h / 2);
@@ -494,15 +500,15 @@ async function initAnim() {
     m.position.set(x, y, z); m.scale.setScalar(Math.max(w, 1e-4));
     m.material.opacity = opacity; m.visible = opacity > 0.003;
   }
-    const qA = new THREE.Quaternion(), qB = new THREE.Quaternion(), eA = new THREE.Euler(), vS = new THREE.Vector3(), qSlot = new THREE.Quaternion();
+    const eF = new THREE.Euler(), qA = new THREE.Quaternion(), qB = new THREE.Quaternion(), eA = new THREE.Euler(), vS = new THREE.Vector3(), qSlot = new THREE.Quaternion();
   function place3(o, local, slot, k, roll, yaw) {
     // local: [x, yCentre, width] in burger units (free pose); slot: box-local [x, y, z]
     const A = anchor(); const sF = Math.max(local[2] * A.s / o.userData.w, 1e-4);
     let x = A.x + local[0] * A.s, y = A.y + local[1] * A.s - o.userData.h * sF * 0.5, z = 0.8, sc = sF;
-    eA.set(0.42 + mouse.y * 0.06, yaw + (S.spin - 0.5) * 0.9 + mouse.x * 0.2, roll); qA.setFromEuler(eA);
+    eA.set(mouse.y * 0.04, (yaw + (S.spin - 0.5) * 0.9) * 0.45 + mouse.x * 0.12, roll); qA.setFromEuler(eA);
     if (k > 0) {
       vS.set(slot[0], slot[1], slot[2]); box.localToWorld(vS); const kk = ease(clamp01(k));
-      qSlot.setFromAxisAngle(vS.clone().set(0, 1, 0), yaw * 0.4); qB.copy(box.quaternion).multiply(qSlot);
+      eF.set(0, box.rotation.y * 0.45 + yaw * 0.15 + 0.04, 0); qB.setFromEuler(eF);
       x = lerp(x, vS.x, kk); y = lerp(y, vS.y, kk) + Math.sin(Math.PI * kk) * (o.userData.lift ?? 0.9) * box.scale.x; z = lerp(z, vS.z, kk) + Math.sin(Math.PI * kk) * 0.6 * box.scale.x; // arc: items drop into their compartments from above
       sc = lerp(sF, box.scale.x * (o.userData.k || 1), kk); qA.slerp(qB, kk);
     }
@@ -535,24 +541,24 @@ async function initAnim() {
     // hero photo (fades out as the real 3D burger takes over at the split)
     placeItem(photo, [0, -2.02 + 0.12 * S.hz, 4.9 * (1 + 0.05 * S.hz)], SLOT.photo, 1, 0, S.photo);
 
-    // real 3D burger: explode / stack / reassemble / dock into its compartment
-    const lt = ease(clamp01((kIt - 0.3) / 0.5)); const lay = stackLayout(e, lt);
-    b3.visible = S.photo < 0.999 && inBox;
+    // photoreal burger: closed photo relief (hero / reassembly / box) ↔ exploded layer reliefs (smash / stack)
+    const sp = spreadOf(e); const split = e > 0.06;
+    b3.visible = inBox; closed.visible = !split; layers.forEach(l => { l.visible = split; });
     if (b3.visible) {
-      ORDER3.forEach(m => {
-        const i = layers.indexOf(m), ii = i < 0 ? 2.5 : i; const fl = Math.sin(tNow * 1.3 + ii * 1.1) * 0.05 * e / U;
-        m.position.set(Math.sin(ii * 2.1) * 0.12 * e / U, lay.y.get(m) + fl, (2.5 - ii) * 0.16 * e / U);
-        m.rotation.set(0, (ii - 2.5) * 0.07 * e + 0.22 * e, (i % 2 ? 1 : -1) * 0.05 * e);
-        if (i < 0) { const sx = 0.55 + 0.45 * lt; m.scale.set(sx, Math.max(lt, 1e-3), sx); m.visible = lt > 0.01; }
+      if (split) layers.forEach((m, i) => {
+        const b = m.userData.base, hh = m.userData.h; const fl = Math.sin(tNow * 1.3 + i * 1.1) * 0.05 * e / U;
+        m.position.set(b.x + Math.sin(i * 2.1) * 0.12 * e / U, b.y * sp + fl - hh / 2, (2.5 - i) * 0.22 * e / U);
+        m.rotation.set(0, (i - 2.5) * 0.07 * e + 0.22 * e, (i % 2 ? 1 : -1) * 0.05 * e);
       });
-      b3.position.set(0, -lay.total * U / 2 * (1 - kk), 0);
-      b3.rotation.set((0.34 + 0.12 * e) * (1 - kk), 0, 0);
-      eA.set(mouse.y * 0.06 * e, mouse.x * 0.18 * e + (S.spin - 0.25) * 0.5 * e + 0.35 * (1 - e) * clamp01(S.seg - 2.4) * (1 - kk), 0); qA.setFromEuler(eA);
+      const hz = S.hz * (1 - kk);
+      closed.position.set(0, (-2.02 + 0.12 * hz) / U * (1 - kk), 0); closed.scale.setScalar(1 + 0.05 * hz);
+      b3.rotation.set(0, 0, 0); b3.position.set(0, 0, 0);
+      eA.set(mouse.y * 0.06 * e, mouse.x * 0.18 * e + (S.spin - 0.25) * 0.5 * e, 0); qA.setFromEuler(eA);
       let x = A.x, y = A.y, z = 0, sc = A.s;
       if (kk > 0) {
         vS.set(SLOT.burger[0], SLOT.burger[1] - sink, SLOT.burger[2]); box.localToWorld(vS);
         x = lerp(x, vS.x, kk); y = lerp(y, vS.y, kk); z = lerp(z, vS.z, kk); sc = lerp(sc, box.scale.x * KB / U, kk);
-        qB.copy(box.quaternion).multiply(qSlot.setFromAxisAngle(W.a.set(0, 1, 0), 0.5)); qA.slerp(qB, kk);
+        eF.set(0, box.rotation.y * 0.45 + 0.08, 0); qB.setFromEuler(eF); qA.slerp(qB, kk);
       }
       burger.position.set(x, y, z); burger.scale.setScalar(sc); burger.quaternion.copy(qA);
       burger.updateMatrixWorld(true);
@@ -569,20 +575,20 @@ async function initAnim() {
       o.visible = vis; if (!vis) continue;
       const sl = SLOT[k]; const slot = [sl[0], sl[1] - sink, sl[2]];
       place3(o, k === 'dipO' ? fly(it[k], FROM[k], 0) : fly(it[k], FROM[k], itE), slot, kBox, roll, SPIN[k]);
-      if (o.userData.tray) o.userData.tray.visible = kBox < 0.35;
+      if (o.userData.tray) { const inTray = kBox < 0.3; o.userData.tray.visible = inTray; o.userData.pile.visible = !inTray; } // fries: tray in the light scene, loose golden heap in the box
       o.userData.sh.material.opacity = 0.55 * ease(clamp01(kBox * 1.6)) * (1 - sink); o.userData.sh.visible = o.userData.sh.material.opacity > 0.01;
     }
     // key light + shadow frustum follow the box, or the burger before the box arrives
     { const sc = sun.shadow.camera; let c, ext;
-      if (box.visible) { c = box.position; ext = 2.4 * box.scale.x; } else { c = burger.position; ext = Math.max(2.5, lay.total * U * 0.75 + 1.5) * burger.scale.x; }
+      if (box.visible) { c = box.position; ext = 2.4 * box.scale.x; } else { c = burger.position; const ex = burgerExtent(e); ext = Math.max(2.5, (ex.top - ex.bot) * 0.7 + 1.5) * burger.scale.x; }
       const u = ext / 2.4; sun.target.position.copy(c); sun.position.set(c.x - 3 * u, c.y + 6 * u, c.z + 5 * u);
       if (Math.abs(sc.right - ext) > 1e-3 * ext) { sc.left = -ext; sc.right = ext; sc.top = ext; sc.bottom = -ext; sc.near = 0.5 * u; sc.far = 16 * u; sc.updateProjectionMatrix(); } }
 
     // stack labels follow the layers' right edges
     const lOp = gsap.getProperty(labelsEl, 'opacity');
-    if (lOp > 0.01 && b3.visible) {
+    if (lOp > 0.01 && b3.visible && split) {
       layers.forEach((m, i) => {
-        v3.set(R3[i] * 0.98, m.userData.h * 0.5, 0); m.localToWorld(v3);
+        v3.set(m.userData.w * 0.46, m.userData.h * (i === 3 || i === 4 ? 0.62 : 0.5), 0); m.localToWorld(v3);
         const q = toScreen(v3); const li = labelLis[i];
         li.style.transform = `translate(${Math.round(q.x + 8)}px, ${Math.round(q.y - li.offsetHeight / 2)}px)`;
       });
