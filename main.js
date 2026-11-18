@@ -95,7 +95,7 @@ async function initAnim() {
         smash: { x0: L.vw * 0.34, x1: L.vw * 0.64, y0: top + (L.vh - top) * 0.02, y1: L.vh * 0.84 }, // video: centred, the title overlaps its right edge
         stack: { x0: L.vw * 0.31, x1: L.vw * 0.65, y0: top - 2, y1: L.vh * 0.97 }, // labels sit right of x1
         combo: { x0: L.vw * 0.07, x1: L.vw * 0.6, y0: top + 30, y1: bot - 24 }, // video: the reassembled set sits left of centre
-        boxOpen: { x0: L.vw * 0.03, x1: L.vw * 0.76, y0: top + 2, y1: L.vh - 4 }, // whole box incl. the open lid, kept below the nav
+        boxOpen: { x0: L.vw * 0.25, x1: L.vw * 1.0, y0: top - L.vh * 0.16, y1: L.vh + 4 }, // v12: the box fills the frame like z020/z024 (the open lid may run under the nav, as in the video)
         boxFront: { x0: L.vw * 0.15, x1: L.vw * 0.86, y0: top + (L.vh - top) * 0.24, y1: L.vh * 0.74 }, // z028 framing
       };
     } else {
@@ -242,7 +242,7 @@ async function initAnim() {
     const later = () => setTimeout(() => (window.requestIdleCallback ? requestIdleCallback(go, { timeout: 2000 }) : go()), 6000);
     if (document.readyState === 'complete') later(); else addEventListener('load', later, { once: true });
   });
-  const THREE = await import('./vendor/three-app.js?v=11');
+  const THREE = await import('./vendor/three-app.js?v=12');
   const canvas = $('#gl');
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'high-performance' });
   renderer.setClearColor(0x000000, 0);
@@ -251,7 +251,7 @@ async function initAnim() {
   const scene = new THREE.Scene();
   await yieldMain();
   // v10: real HDRI (Poly Haven "Studio Small 09", CC0, downsampled to 256x128) + ACES filmic tone mapping
-  try { const pm = new THREE.PMREMGenerator(renderer); const hdr = await new THREE.RGBELoader().loadAsync('assets/env/studio_small_09_128.hdr?v=11');
+  try { const pm = new THREE.PMREMGenerator(renderer); const hdr = await new THREE.RGBELoader().loadAsync('assets/env/studio_small_09_128.hdr?v=12');
     scene.environment = pm.fromEquirectangular(hdr).texture; hdr.dispose(); pm.dispose(); }
   catch (err) { scene.environment = THREE.studioEnv(renderer); }
   scene.environmentIntensity = 0.9; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
@@ -274,7 +274,7 @@ async function initAnim() {
   ];
   const CX = 360, CY = 549;
   const LBL = [[0, 0.5], [1, 0.5], [2, 0.5], [3, 0.8], [3, 0.3], [4, 0.5]]; // label → [layer, height fraction]: cheese + patty share the patty layer
-  const [photoTex, closedTex, layerTex] = await Promise.all([tex('assets/img/burger.webp?v=11'), tex('assets/img/burger1.webp?v=11'), Promise.all(LAY.map(l => tex(`assets/img/${l[0]}.webp?v=11`)))]);
+  const [photoTex, closedTex, layerTex] = await Promise.all([tex('assets/img/burger.webp?v=12'), tex('assets/img/burger1.webp?v=12'), Promise.all(LAY.map(l => tex(`assets/img/${l[0]}.webp?v=12`)))]);
   const burger = new THREE.Group(); scene.add(burger);
   const planeMat = (t) => new THREE.MeshBasicMaterial({ map: t, transparent: true, depthWrite: false, toneMapped: false });
   const U = 4.0; // burger units (hero photo ≈ 4.9 wide) per box unit
@@ -366,7 +366,7 @@ async function initAnim() {
   panel(T, BH, BD, [mIn, M({ map: sideLTex }), mBlack, mBlack, mBlack, mBlack], -BW / 2 + T / 2, BH / 2, 0);
   panel(T, BH * 0.62, BD - 2 * T, [mIn, mIn, mBlack, mBlack, mBlack, mBlack], -0.18, BH * 0.31, 0);
   // raised insert for the dips (front-right) + ring holder wall for the shake, like the video's compartments
-  const INS = { burger: 0.46, dips: 0.6, fries: 0.22, shake: 0.36 };
+  const INS = { burger: 0.3, dips: 0.6, fries: 0.22, shake: 0.2 };
   panel(1.36, INS.burger, BD - 2 * T, [mIn, mIn, mFloor, mBlack, mIn, mIn], -0.88, INS.burger / 2, 0);
   panel(0.86, INS.dips, 0.84, [mIn, mIn, mFloor, mBlack, mIn, mIn], 0.3, INS.dips / 2, 0.54);
   panel(0.86, INS.fries, 1.0, [mIn, mIn, mFloor, mBlack, mIn, mIn], 0.3, INS.fries / 2, -0.48);
@@ -390,19 +390,22 @@ async function initAnim() {
   bsh.rotation.x = -Math.PI / 2; bsh.position.y = 0.002; bsh.renderOrder = 2; box.add(bsh);
   // slots inside the box (box-local, bottom anchored) + widths in box units
   const SLOT = { photo: [-0.89, INS.burger, 0.06, 1.4], burger: [-0.8, INS.burger, 0.2, 0], fries: [0.3, INS.fries, -0.46, 0], dipO: [0.08, INS.dips, 0.4, 0], dipD: [0.52, INS.dips, 0.7, 0], shake: [1.1, INS.shake, 0.22, 0] };
-  const BOX_OPEN = { rx: 0.62, ry: -0.24, lid: -2.2 }, BOX_FRONT = { rx: 0.09, ry: 0.0, lid: 0 }; // open: 3/4 view like the video; closed: straight-on front
+  const BOX_OPEN = { rx: 0.7, ry: -0.22, lid: -2.05 }, BOX_FRONT = { rx: 0.09, ry: 0.0, lid: 0 }; // open: 3/4 view like the video; closed: straight-on front
 
   await yieldMain();
   const blob = canvasTex(256, 128, (g, w, h) => { const gr = g.createRadialGradient(w / 2, h / 2, 2, w / 2, h / 2, w / 2); gr.addColorStop(0, 'rgba(0,0,0,.85)'); gr.addColorStop(0.55, 'rgba(0,0,0,.4)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.setTransform(1, 0, 0, 0.5, 0, h / 4); g.fillStyle = gr; g.fillRect(0, 0, w, w); });
   // v10: photoreal fries / dips / shake as photo reliefs, with a soft contact blob under each
-  const [trayT, friesT, dipOT, dipDT, shakeT] = await Promise.all(['p_tray', 'p_fries', 'p_cupo', 'p_cupd', 'p_shake'].map(n => tex(`assets/img/${n}.webp?v=11`)));
+  const [trayT, friesT, dipOT, dipDT, shakeT] = await Promise.all(['p_tray', 'p_fries', 'p_cupo', 'p_cupd', 'p_shake'].map(n => tex(`assets/img/${n}.webp?v=12`)));
   function food(parts, shW) {
     const o = new THREE.Group(); parts.forEach(p => o.add(p));
     const sh = new THREE.Mesh(new THREE.PlaneGeometry(shW, shW * 0.6), new THREE.MeshBasicMaterial({ map: blob, transparent: true, depthWrite: false, opacity: 0.55 }));
     sh.rotation.x = -Math.PI / 2; sh.position.set(0, 0.004, 0.05); sh.renderOrder = 3; o.add(sh);
     o.userData = { w: parts[0].userData.w, h: Math.max(...parts.map(p => p.userData.h)), sh, parts }; scene.add(o); o.visible = false; return o;
   }
-  const trayR = THREE.photoRelief(trayT, { w: 1, depth: 0.16, round: 0.35, seg: 80 }), pileR = THREE.photoRelief(friesT, { w: 1, depth: 0.12, round: 0.3 });
+  const trayR = THREE.photoRelief(trayT, { w: 1, depth: 0.16, round: 0.35, seg: 80 }), pileF = THREE.photoRelief(friesT, { w: 1, depth: 0.12, round: 0.3 });
+  // v12: a fuller well of fries like z024 — a second, mirrored heap behind and above the first
+  const pileB = THREE.photoRelief(friesT, { w: 1, depth: 0.12, round: 0.3, emissive: 0.6 }); pileB.scale.set(-1.08, 1.12, 1); pileB.position.set(0.06, 0.16, -0.12);
+  const pileR = new THREE.Group(); pileR.add(pileB, pileF); pileR.userData = { w: 1, h: pileF.userData.h * 1.3 };
   const fries = food([trayR, pileR], 0.95); fries.userData.tray = trayR; fries.userData.pile = pileR; await yieldMain();
   // v11: dips are clear plastic portion cups (z020/z024): photo relief of the cup + sauce, plus a clear snap lid (PBR, HDRI reflections)
   // clear snap lid: a glossy clear-plastic film over the rim ellipse (rim ring + soft dome + specular streaks), in the photo's perspective
@@ -426,7 +429,7 @@ async function initAnim() {
   burgerSh.rotation.x = -Math.PI / 2; burgerSh.renderOrder = 3; box.add(burgerSh); burgerSh.position.set(SLOT.burger[0], SLOT.burger[1] + 0.004, SLOT.burger[2]);
   const FOOD = { fries, dipO, dipD, shake };
   fries.userData.lift = 1.7; dipO.userData.lift = dipD.userData.lift = 1.1; shake.userData.lift = 0.5;
-  fries.userData.k = 1.15; shake.userData.k = 1.04; dipO.userData.k = dipD.userData.k = 0.5; const KB = 1.6 / (4.84 / U); const LEAN = 0.42; // v11: food leans back with part of the box pitch, so it sits in the compartments seen from above (z020/z024) // v11: burger + shake bigger, like z020/z024
+  fries.userData.k = 1.3; shake.userData.k = 0.86; dipO.userData.k = dipD.userData.k = 0.46; const KB = 1.3 / (4.84 / U); const LEAN = 0.5; // v11: food leans back with part of the box pitch, so it sits in the compartments seen from above (z020/z024) // v11: burger + shake bigger, like z020/z024
   // free-pose widths are in burger units; make the sizes follow real proportions
   await yieldMain();
   /* ---------- fitting helpers ---------- */

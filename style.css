@@ -248,3 +248,11 @@ main:focus{outline:none}
 
 /* v9: COMBO dark like z020 */
 .dark.t-combo .acc{color:#1C1C1C}
+
+/* v12: the open box fills the frame (z020/z024); GAME DAY COMBO moves to a left column so it never covers the box */
+@media (min-aspect-ratio:1/1){
+  .anim .t-combo{left:clamp(20px,4vw,64px);right:auto;top:calc(var(--navh) + 20vh);bottom:auto;width:22vw;max-width:22vw}
+  .anim .t-combo .big{white-space:normal;font-size:clamp(40px,4.4vw,84px)}
+  .anim .t-combo .big br{display:inline}
+  .anim .t-combo .body{max-width:22vw}
+}
