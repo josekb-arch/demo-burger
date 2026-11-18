@@ -242,7 +242,7 @@ async function initAnim() {
     const later = () => setTimeout(() => (window.requestIdleCallback ? requestIdleCallback(go, { timeout: 2000 }) : go()), 6000);
     if (document.readyState === 'complete') later(); else addEventListener('load', later, { once: true });
   });
-  const THREE = await import('./vendor/three-app.js?v=10');
+  const THREE = await import('./vendor/three-app.js?v=11');
   const canvas = $('#gl');
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'high-performance' });
   renderer.setClearColor(0x000000, 0);
@@ -251,7 +251,7 @@ async function initAnim() {
   const scene = new THREE.Scene();
   await yieldMain();
   // v10: real HDRI (Poly Haven "Studio Small 09", CC0, downsampled to 256x128) + ACES filmic tone mapping
-  try { const pm = new THREE.PMREMGenerator(renderer); const hdr = await new THREE.RGBELoader().loadAsync('assets/env/studio_small_09_256.hdr?v=10');
+  try { const pm = new THREE.PMREMGenerator(renderer); const hdr = await new THREE.RGBELoader().loadAsync('assets/env/studio_small_09_256.hdr?v=11');
     scene.environment = pm.fromEquirectangular(hdr).texture; hdr.dispose(); pm.dispose(); }
   catch (err) { scene.environment = THREE.studioEnv(renderer); }
   scene.environmentIntensity = 0.9; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
@@ -268,11 +268,13 @@ async function initAnim() {
   /* v10: photoreal food. Every piece is a real-looking photo cut-out turned into a 3D photo relief (src/relief.js):
      rounded height field from the silhouette, darker mirrored back, HDRI shading and real cast/contact shadows. */
   const LAY = [ // stack layers (source px in the 720x1280 exploded reference): name, x, y, w, h
-    ['l_topbun', 145, 96, 431, 210], ['l_sauce', 144, 336, 428, 105], ['l_onions', 125, 441, 461, 153],
-    ['l_patty1', 117, 594, 482, 172], ['l_patty2', 117, 766, 487, 192], ['l_botbun', 161, 958, 399, 202],
+    // v11: one patty like z016 (cheese re-toned to the video's orange melt), tighter spacing
+    ['l_topbun', 145, 96, 431, 210], ['l_sauce', 144, 330, 428, 105], ['l_onions', 125, 432, 461, 153],
+    ['l_patty', 117, 604, 487, 192], ['l_botbun', 161, 796, 399, 202],
   ];
-  const CX = 360, CY = 628;
-  const [photoTex, layerTex] = await Promise.all([tex('assets/img/burger.webp'), Promise.all(LAY.map(l => tex(`assets/img/${l[0]}.webp?v=10`)))]);
+  const CX = 360, CY = 549;
+  const LBL = [[0, 0.5], [1, 0.5], [2, 0.5], [3, 0.8], [3, 0.3], [4, 0.5]]; // label → [layer, height fraction]: cheese + patty share the patty layer
+  const [photoTex, layerTex] = await Promise.all([tex('assets/img/burger.webp'), Promise.all(LAY.map(l => tex(`assets/img/${l[0]}.webp?v=11`)))]);
   const burger = new THREE.Group(); scene.add(burger);
   const planeMat = (t) => new THREE.MeshBasicMaterial({ map: t, transparent: true, depthWrite: false, toneMapped: false });
   const U = 4.0; // burger units (hero photo ≈ 4.9 wide) per box unit
@@ -385,13 +387,13 @@ async function initAnim() {
   const bsh = new THREE.Mesh(new THREE.PlaneGeometry(BW * 1.5, BD * 1.7), new THREE.MeshBasicMaterial({ map: canvasTex(256, 256, (g) => { const gr = g.createRadialGradient(128, 128, 30, 128, 128, 128); gr.addColorStop(0, 'rgba(0,0,0,.7)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.fillRect(0, 0, 256, 256); }), transparent: true, depthWrite: false }));
   bsh.rotation.x = -Math.PI / 2; bsh.position.y = 0.002; bsh.renderOrder = 2; box.add(bsh);
   // slots inside the box (box-local, bottom anchored) + widths in box units
-  const SLOT = { photo: [-0.89, INS.burger, 0.06, 1.4], burger: [-0.89, INS.burger, 0.06, 0], fries: [0.3, INS.fries, -0.46, 0], dipO: [0.08, INS.dips, 0.4, 0], dipD: [0.52, INS.dips, 0.7, 0], shake: [1.14, INS.shake, 0.04, 0] };
+  const SLOT = { photo: [-0.89, INS.burger, 0.06, 1.4], burger: [-0.8, INS.burger, 0.2, 0], fries: [0.3, INS.fries, -0.46, 0], dipO: [0.08, INS.dips, 0.4, 0], dipD: [0.52, INS.dips, 0.7, 0], shake: [1.1, INS.shake, 0.22, 0] };
   const BOX_OPEN = { rx: 0.46, ry: -0.26, lid: -1.74 }, BOX_FRONT = { rx: 0.09, ry: 0.0, lid: 0 }; // open: 3/4 view like the video; closed: straight-on front
 
   await yieldMain();
   const blob = canvasTex(256, 128, (g, w, h) => { const gr = g.createRadialGradient(w / 2, h / 2, 2, w / 2, h / 2, w / 2); gr.addColorStop(0, 'rgba(0,0,0,.85)'); gr.addColorStop(0.55, 'rgba(0,0,0,.4)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.setTransform(1, 0, 0, 0.5, 0, h / 4); g.fillStyle = gr; g.fillRect(0, 0, w, w); });
   // v10: photoreal fries / dips / shake as photo reliefs, with a soft contact blob under each
-  const [trayT, friesT, dipOT, dipDT, shakeT] = await Promise.all(['p_tray', 'p_fries', 'p_dipo', 'p_dipd', 'p_shake'].map(n => tex(`assets/img/${n}.webp?v=10`)));
+  const [trayT, friesT, dipOT, dipDT, shakeT] = await Promise.all(['p_tray', 'p_fries', 'p_cupo', 'p_cupd', 'p_shake'].map(n => tex(`assets/img/${n}.webp?v=11`)));
   function food(parts, shW) {
     const o = new THREE.Group(); parts.forEach(p => o.add(p));
     const sh = new THREE.Mesh(new THREE.PlaneGeometry(shW, shW * 0.6), new THREE.MeshBasicMaterial({ map: blob, transparent: true, depthWrite: false, opacity: 0.55 }));
@@ -400,13 +402,29 @@ async function initAnim() {
   }
   const trayR = THREE.photoRelief(trayT, { w: 1, depth: 0.2, round: 0.35 }), pileR = THREE.photoRelief(friesT, { w: 1, depth: 0.12, round: 0.3 });
   const fries = food([trayR, pileR], 0.95); fries.userData.tray = trayR; fries.userData.pile = pileR; await yieldMain();
-  const dipO = food([THREE.photoRelief(dipOT, { w: 1, depth: 0.22, round: 0.45, seg: 40 })], 1.0), dipD = food([THREE.photoRelief(dipDT, { w: 1, depth: 0.22, round: 0.45, seg: 40 })], 1.0);
+  // v11: dips are clear plastic portion cups (z020/z024): photo relief of the cup + sauce, plus a clear snap lid (PBR, HDRI reflections)
+  // clear snap lid: a glossy clear-plastic film over the rim ellipse (rim ring + soft dome + specular streaks), in the photo's perspective
+  const lidTex = canvasTex(512, 160, (g, w, h) => {
+    g.save(); g.beginPath(); g.ellipse(w / 2, h / 2, w / 2 - 6, h / 2 - 6, 0, 0, 7); g.clip();
+    const gr = g.createRadialGradient(w * 0.42, h * 0.38, 4, w / 2, h / 2, w / 2); gr.addColorStop(0, 'rgba(255,255,255,0.30)'); gr.addColorStop(0.6, 'rgba(255,255,255,0.10)'); gr.addColorStop(1, 'rgba(255,255,255,0.22)');
+    g.fillStyle = gr; g.fillRect(0, 0, w, h);
+    g.globalCompositeOperation = 'lighter'; g.strokeStyle = 'rgba(255,255,255,0.55)'; g.lineCap = 'round';
+    g.lineWidth = 7; g.beginPath(); g.moveTo(w * 0.2, h * 0.62); g.quadraticCurveTo(w * 0.32, h * 0.22, w * 0.55, h * 0.16); g.stroke();
+    g.lineWidth = 3; g.beginPath(); g.moveTo(w * 0.66, h * 0.2); g.lineTo(w * 0.76, h * 0.28); g.stroke(); g.restore();
+    g.strokeStyle = 'rgba(255,255,255,0.75)'; g.lineWidth = 6; g.beginPath(); g.ellipse(w / 2, h / 2, w / 2 - 6, h / 2 - 6, 0, 0, 7); g.stroke();
+    g.strokeStyle = 'rgba(255,255,255,0.35)'; g.lineWidth = 3; g.beginPath(); g.ellipse(w / 2, h / 2, w / 2 - 22, h / 2 - 16, 0, 0, 7); g.stroke();
+  });
+  const lidMat = new THREE.MeshBasicMaterial({ map: lidTex, transparent: true, depthWrite: false, toneMapped: false });
+  const lidGeo = new THREE.PlaneGeometry(0.97, 0.33);
+  function cup(t) { const r = THREE.photoRelief(t, { w: 1, depth: 0.3, round: 0.5, seg: 40, dome: 0.1 });
+    const lid = new THREE.Mesh(lidGeo, lidMat); lid.position.set(0, r.userData.h - 0.165, 0.32); lid.renderOrder = 40; r.add(lid); return r; }
+  const dipO = food([cup(dipOT)], 0.95), dipD = food([cup(dipDT)], 0.95);
   const shake = food([THREE.photoRelief(shakeT, { w: 1, depth: 0.42, round: 0.55, dome: 0.1 })], 0.9); await yieldMain();
   const burgerSh = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 1.1), new THREE.MeshBasicMaterial({ map: blob, transparent: true, depthWrite: false, opacity: 0 }));
   burgerSh.rotation.x = -Math.PI / 2; burgerSh.renderOrder = 3; box.add(burgerSh); burgerSh.position.set(SLOT.burger[0], SLOT.burger[1] + 0.004, SLOT.burger[2]);
   const FOOD = { fries, dipO, dipD, shake };
   fries.userData.lift = 1.7; dipO.userData.lift = dipD.userData.lift = 1.1; shake.userData.lift = 0.5;
-  fries.userData.k = 1.15; shake.userData.k = 0.8; dipO.userData.k = dipD.userData.k = 0.54; const KB = 1.4 / (4.9 / U); // sizes as in v5/v6 (z024)
+  fries.userData.k = 1.15; shake.userData.k = 1.04; dipO.userData.k = dipD.userData.k = 0.5; const KB = 1.68 / (4.9 / U); // v11: burger + shake bigger, like z020/z024
   // free-pose widths are in burger units; make the sizes follow real proportions
   await yieldMain();
   /* ---------- fitting helpers ---------- */
@@ -422,7 +440,7 @@ async function initAnim() {
   const toWorld = (px, py) => ({ x: (px - L.vw / 2) * wpp, y: (L.vh / 2 - py) * wpp });
   const toScreen = (v) => { v3.copy(v).project(camera); return { x: (v3.x + 1) / 2 * L.vw, y: (1 - v3.y) / 2 * L.vh }; };
   // burger content extents in local units
-    function burgerExtent(e) { const sp = spreadOf(e); const t = LAY[0], b = LAY[5]; return { top: -(t[2] - CY) / 100 * sp + (sp < 0.5 ? 0.6 : 0), bot: -(b[2] + b[4] - CY) / 100 * sp - (sp < 0.5 ? 0.6 : 0) }; }
+    function burgerExtent(e) { const sp = spreadOf(e); const t = LAY[0], b = LAY[LAY.length - 1]; return { top: -(t[2] - CY) / 100 * sp + (sp < 0.5 ? 0.6 : 0), bot: -(b[2] + b[4] - CY) / 100 * sp - (sp < 0.5 ? 0.6 : 0) }; }
   const FIT = {};
   function fitBurger(R, e, wUnits = 5.2, fill = 0.9) {
     const ex = burgerExtent(e); const hU = (ex.top - (ex.bot)) + (e > 0.5 ? 2.1 : 0);
@@ -547,8 +565,8 @@ async function initAnim() {
     if (b3.visible) {
       if (split) layers.forEach((m, i) => {
         const b = m.userData.base, hh = m.userData.h; const fl = Math.sin(tNow * 1.3 + i * 1.1) * 0.05 * e / U;
-        m.position.set(b.x + Math.sin(i * 2.1) * 0.12 * e / U, b.y * sp + fl - hh / 2, (2.5 - i) * 0.22 * e / U);
-        m.rotation.set(0, (i - 2.5) * 0.07 * e + 0.22 * e, (i % 2 ? 1 : -1) * 0.05 * e);
+        m.position.set(b.x + Math.sin(i * 2.1) * 0.12 * e / U, b.y * sp + fl - hh / 2, (2 - i) * 0.24 * e / U);
+        m.rotation.set(0, (i - 2) * 0.08 * e + 0.22 * e, (i % 2 ? 1 : -1) * 0.05 * e);
       });
       const hz = S.hz * (1 - kk);
       closed.position.set(0, (-2.02 + 0.12 * hz) / U * (1 - kk), 0); closed.scale.setScalar(1 + 0.05 * hz);
@@ -587,8 +605,8 @@ async function initAnim() {
     // stack labels follow the layers' right edges
     const lOp = gsap.getProperty(labelsEl, 'opacity');
     if (lOp > 0.01 && b3.visible && split) {
-      layers.forEach((m, i) => {
-        v3.set(m.userData.w * 0.46, m.userData.h * (i === 3 || i === 4 ? 0.62 : 0.5), 0); m.localToWorld(v3);
+      LBL.forEach(([j, f], i) => { const m = layers[j];
+        v3.set(m.userData.w * 0.46, m.userData.h * f, 0); m.localToWorld(v3);
         const q = toScreen(v3); const li = labelLis[i];
         li.style.transform = `translate(${Math.round(q.x + 8)}px, ${Math.round(q.y - li.offsetHeight / 2)}px)`;
       });
