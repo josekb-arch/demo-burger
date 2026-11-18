@@ -1,8 +1,8 @@
 /* v10 — photoreal food: real-looking photo cut-outs turned into 3D "photo reliefs".
    The alpha mask gives the silhouette; a distance transform of the mask gives a rounded height field, so the photo is
-   displaced into a volume (front) and mirrored into a darker back half. Lit by the HDRI (shading + contact/cast shadows),
+   displaced into a volume (front) and mirrored into a darker back half. Lit by the scene lights (Lambert: cheap per-pixel shading + cast/contact shadows),
    while an emissive copy of the photo keeps its real colours. Turning the box or the fly-in shows volume, not a flat card. */
-import { Group, Mesh, PlaneGeometry, MeshStandardMaterial, Color, FrontSide, DoubleSide } from 'three';
+import { Group, Mesh, PlaneGeometry, MeshLambertMaterial, Color, FrontSide } from 'three';
 import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js';
 export { RGBELoader };
 
@@ -26,9 +26,9 @@ export function photoRelief(tex, { w = 1, depth = 0.2, seg = 64, round = 0.4, do
     p.setZ(i, depth * w * edge * (1 - dome + dome * Math.min(1, d[i] / dmax)));
   }
   geo.computeVertexNormals();
-  const mat = (tone, em, side) => new MeshStandardMaterial({ map: tex, emissiveMap: tex, emissive: new Color(em, em, em), color: new Color(tone, tone, tone), roughness: rough, metalness: 0, alphaTest: 0.5, alphaToCoverage: true, side, toneMapped: false, envMapIntensity: 0.6 });
+  const mat = (tone, em, side) => new MeshLambertMaterial({ map: tex, emissiveMap: tex, emissive: new Color(em, em, em), color: new Color(tone, tone, tone), alphaTest: 0.5, side, toneMapped: false });
   const front = new Mesh(geo, mat(diffuse, emissive, FrontSide));
-  const back = new Mesh(geo, mat(diffuse * backTone, emissive * backTone, DoubleSide)); back.scale.z = -1;
+  const back = new Mesh(geo, mat(diffuse * backTone, emissive * backTone, FrontSide)); back.scale.z = -1;
   front.castShadow = back.castShadow = true; front.receiveShadow = true;
   const grp = new Group(); grp.add(front, back); grp.userData = { w, h: H, front, back };
   return grp;
