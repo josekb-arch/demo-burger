@@ -390,7 +390,7 @@ async function initAnim() {
   bsh.rotation.x = -Math.PI / 2; bsh.position.y = 0.002; bsh.renderOrder = 2; box.add(bsh);
   // slots inside the box (box-local, bottom anchored) + widths in box units
   const SLOT = { photo: [-0.89, INS.burger, 0.06, 1.4], burger: [-0.8, INS.burger, 0.2, 0], fries: [0.3, INS.fries, -0.46, 0], dipO: [0.08, INS.dips, 0.4, 0], dipD: [0.52, INS.dips, 0.7, 0], shake: [1.1, INS.shake, 0.22, 0] };
-  const BOX_OPEN = { rx: 0.46, ry: -0.26, lid: -1.74 }, BOX_FRONT = { rx: 0.09, ry: 0.0, lid: 0 }; // open: 3/4 view like the video; closed: straight-on front
+  const BOX_OPEN = { rx: 0.62, ry: -0.24, lid: -2.2 }, BOX_FRONT = { rx: 0.09, ry: 0.0, lid: 0 }; // open: 3/4 view like the video; closed: straight-on front
 
   await yieldMain();
   const blob = canvasTex(256, 128, (g, w, h) => { const gr = g.createRadialGradient(w / 2, h / 2, 2, w / 2, h / 2, w / 2); gr.addColorStop(0, 'rgba(0,0,0,.85)'); gr.addColorStop(0.55, 'rgba(0,0,0,.4)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.setTransform(1, 0, 0, 0.5, 0, h / 4); g.fillStyle = gr; g.fillRect(0, 0, w, w); });
@@ -426,7 +426,7 @@ async function initAnim() {
   burgerSh.rotation.x = -Math.PI / 2; burgerSh.renderOrder = 3; box.add(burgerSh); burgerSh.position.set(SLOT.burger[0], SLOT.burger[1] + 0.004, SLOT.burger[2]);
   const FOOD = { fries, dipO, dipD, shake };
   fries.userData.lift = 1.7; dipO.userData.lift = dipD.userData.lift = 1.1; shake.userData.lift = 0.5;
-  fries.userData.k = 1.15; shake.userData.k = 1.04; dipO.userData.k = dipD.userData.k = 0.5; const KB = 1.6 / (4.84 / U); // v11: burger + shake bigger, like z020/z024
+  fries.userData.k = 1.15; shake.userData.k = 1.04; dipO.userData.k = dipD.userData.k = 0.5; const KB = 1.6 / (4.84 / U); const LEAN = 0.42; // v11: food leans back with part of the box pitch, so it sits in the compartments seen from above (z020/z024) // v11: burger + shake bigger, like z020/z024
   // free-pose widths are in burger units; make the sizes follow real proportions
   await yieldMain();
   /* ---------- fitting helpers ---------- */
@@ -528,7 +528,7 @@ async function initAnim() {
     eA.set(mouse.y * 0.04, (yaw + (S.spin - 0.5) * 0.9) * 0.3 + mouse.x * 0.08, roll * 0.7); qA.setFromEuler(eA);
     if (k > 0) {
       vS.set(slot[0], slot[1], slot[2]); box.localToWorld(vS); const kk = ease(clamp01(k));
-      eF.set(0, box.rotation.y * 0.3 + yaw * 0.1 + 0.03, 0); qB.setFromEuler(eF);
+      eF.set(-LEAN * box.rotation.x, box.rotation.y * 0.3 + yaw * 0.1 + 0.03, 0); qB.setFromEuler(eF);
       x = lerp(x, vS.x, kk); y = lerp(y, vS.y, kk) + Math.sin(Math.PI * kk) * (o.userData.lift ?? 0.9) * box.scale.x; z = lerp(z, vS.z, kk) + Math.sin(Math.PI * kk) * 0.6 * box.scale.x; // arc: items drop into their compartments from above
       sc = lerp(sF, box.scale.x * (o.userData.k || 1), kk); qA.slerp(qB, kk);
     }
@@ -579,7 +579,7 @@ async function initAnim() {
       if (kk > 0) {
         vS.set(SLOT.burger[0], SLOT.burger[1] - sink, SLOT.burger[2]); box.localToWorld(vS);
         x = lerp(x, vS.x, kk); y = lerp(y, vS.y, kk); z = lerp(z, vS.z, kk); sc = lerp(sc, box.scale.x * KB / U, kk);
-        eF.set(0, box.rotation.y * 0.3 + 0.05, 0); qB.setFromEuler(eF); qA.slerp(qB, kk);
+        eF.set(-LEAN * box.rotation.x, box.rotation.y * 0.3 + 0.05, 0); qB.setFromEuler(eF); qA.slerp(qB, kk);
       }
       burger.position.set(x, y, z); burger.scale.setScalar(sc); burger.quaternion.copy(qA);
       burger.updateMatrixWorld(true);
