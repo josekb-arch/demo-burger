@@ -406,7 +406,7 @@ async function initAnim() {
   burgerSh.rotation.x = -Math.PI / 2; burgerSh.renderOrder = 3; box.add(burgerSh); burgerSh.position.set(SLOT.burger[0], SLOT.burger[1] + 0.004, SLOT.burger[2]);
   const FOOD = { fries, dipO, dipD, shake };
   fries.userData.lift = 1.7; dipO.userData.lift = dipD.userData.lift = 1.1; shake.userData.lift = 0.5;
-  fries.userData.k = 0.95; shake.userData.k = 0.8; dipO.userData.k = dipD.userData.k = 0.54; const KB = 1.4 / (4.9 / U); // sizes as in v5/v6 (z024)
+  fries.userData.k = 1.15; shake.userData.k = 0.8; dipO.userData.k = dipD.userData.k = 0.54; const KB = 1.4 / (4.9 / U); // sizes as in v5/v6 (z024)
   // free-pose widths are in burger units; make the sizes follow real proportions
   await yieldMain();
   /* ---------- fitting helpers ---------- */
