@@ -572,7 +572,7 @@ async function initAnim() {
         m.rotation.set(0, (i - 2) * 0.05 * e + 0.14 * e, (i % 2 ? 1 : -1) * 0.05 * e);
       });
       const hz = S.hz * (1 - kk);
-      closed.position.set(0, (-closed.userData.h * U / 2 + 0.12 * hz) / U * (1 - kk), 0); closed.scale.setScalar((1 + 0.05 * hz) * (heroB ? 1 : 1 + 0.14 * (1 - kk)));
+      closed.position.set(0, (-closed.userData.h * U / 2 + 0.12 * hz) / U * (1 - kk), 0); closed.scale.setScalar((1 + 0.05 * hz) * (heroB ? 1 : 1 + (L.portrait ? -0.08 : 0.14) * (1 - kk)));
       b3.rotation.set(0, 0, 0); b3.position.set(0, 0, 0);
       eA.set(mouse.y * 0.06 * e, mouse.x * 0.12 * e + (S.spin - 0.25) * 0.32 * e, 0); qA.setFromEuler(eA);
       let x = A.x, y = A.y, z = 0, sc = A.s;
