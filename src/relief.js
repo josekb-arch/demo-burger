@@ -35,13 +35,21 @@ export function photoRelief(tex, { w = 1, depth = 0.2, seg = 64, round = 0.4, do
   }
   geo.setAttribute('color', new BufferAttribute(col, 3));
   geo.computeVertexNormals();
+  const yawU = { value: 0 };
   const mat = (tone, em, side, back) => { const m = new MeshLambertMaterial({ map: tex, emissiveMap: tex, emissive: new Color(em, em, em), color: new Color(tone, tone, tone), alphaTest: 0.5, side, toneMapped: false, vertexColors: true,
       polygonOffset: back, polygonOffsetFactor: back ? 2 : 0, polygonOffsetUnits: back ? 4 : 0 }); // back shell always loses the depth tie at the silhouette (no dark specks)
-    m.onBeforeCompile = (sh) => { sh.fragmentShader = sh.fragmentShader.replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n\ttotalEmissiveRadiance *= vColor.rgb;'); };
-    m.customProgramCacheKey = () => 'relief-ao'; return m; };;
+    // v12: the baked photo light reacts to the turn — the side turning toward the key light brightens, the other side falls off,
+    // and the whole piece dims a little as it turns away (uYaw = signed yaw vs. the camera, set per frame by the scene)
+    m.onBeforeCompile = (sh) => {
+      sh.uniforms.uYaw = yawU; sh.uniforms.uW = { value: w };
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying float vRx;\nuniform float uW;').replace('#include <begin_vertex>', '#include <begin_vertex>\n\tvRx = position.x / uW;');
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying float vRx;\nuniform float uYaw;')
+        .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n\ttotalEmissiveRadiance *= vColor.rgb * clamp(1.0 + uYaw * vRx * 1.3 - abs(uYaw) * 0.16, 0.55, 1.3);');
+    };
+    m.customProgramCacheKey = () => 'relief-ao-yaw'; return m; };;
   const front = new Mesh(geo, mat(diffuse, emissive, FrontSide, false));
   const back = new Mesh(geo, mat(diffuse * backTone, emissive * backTone, FrontSide, true)); back.scale.z = -1;
   front.castShadow = back.castShadow = true; front.receiveShadow = true;
-  const grp = new Group(); grp.add(front, back); grp.userData = { w, h: H, front, back };
+  const grp = new Group(); grp.add(front, back); grp.userData = { w, h: H, front, back, yaw: yawU };
   return grp;
 }

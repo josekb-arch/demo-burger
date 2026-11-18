@@ -284,7 +284,7 @@ async function initAnim() {
   await yieldMain();
   const closedHero = THREE.photoRelief(photoTex, { w: 4.9 / U, depth: 0.26, seg: 72, round: 0.45, base: 0.15 }); b3.add(closedHero); // hero burger (same photo as the hero <img>)
   // v11: after the stack the burger reassembles from the same one-patty layer photos (z017/z020/z024)
-  const closedOne = THREE.photoRelief(closedTex, { w: 4.84 / U, depth: 0.3, seg: 72, round: 0.45 }); b3.add(closedOne);
+  const closedOne = THREE.photoRelief(closedTex, { w: 4.84 / U, depth: 0.3, seg: 72, round: 0.45, base: 0.45 }); b3.add(closedOne);
   const spreadOf = (e) => 0.3 + 0.85 * e;
   // shadow under the burger on the paper
   const shCan = document.createElement('canvas'); shCan.width = 256; shCan.height = 64;
@@ -366,7 +366,7 @@ async function initAnim() {
   panel(T, BH, BD, [mIn, M({ map: sideLTex }), mBlack, mBlack, mBlack, mBlack], -BW / 2 + T / 2, BH / 2, 0);
   panel(T, BH * 0.62, BD - 2 * T, [mIn, mIn, mBlack, mBlack, mBlack, mBlack], -0.18, BH * 0.31, 0);
   // raised insert for the dips (front-right) + ring holder wall for the shake, like the video's compartments
-  const INS = { burger: 0.3, dips: 0.6, fries: 0.22, shake: 0.2 };
+  const INS = { burger: 0.3, dips: 0.6, fries: 0.22, shake: 0.045 }; // v12: the shake stands on the box floor
   panel(1.36, INS.burger, BD - 2 * T, [mIn, mIn, mFloor, mBlack, mIn, mIn], -0.88, INS.burger / 2, 0);
   panel(0.86, INS.dips, 0.84, [mIn, mIn, mFloor, mBlack, mIn, mIn], 0.3, INS.dips / 2, 0.54);
   panel(0.86, INS.fries, 1.0, [mIn, mIn, mFloor, mBlack, mIn, mIn], 0.3, INS.fries / 2, -0.48);
@@ -396,11 +396,15 @@ async function initAnim() {
   const blob = canvasTex(256, 128, (g, w, h) => { const gr = g.createRadialGradient(w / 2, h / 2, 2, w / 2, h / 2, w / 2); gr.addColorStop(0, 'rgba(0,0,0,.85)'); gr.addColorStop(0.55, 'rgba(0,0,0,.4)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.setTransform(1, 0, 0, 0.5, 0, h / 4); g.fillStyle = gr; g.fillRect(0, 0, w, w); });
   // v10: photoreal fries / dips / shake as photo reliefs, with a soft contact blob under each
   const [trayT, friesT, dipOT, dipDT, shakeT] = await Promise.all(['p_tray', 'p_fries', 'p_cupo', 'p_cupd', 'p_shake'].map(n => tex(`assets/img/${n}.webp?v=12`)));
+  // v12: tight, dark contact core under each piece (on top of the soft blob) so the food reads as resting on its compartment floor
+  const core = canvasTex(256, 96, (g, w, h) => { const gr = g.createRadialGradient(w / 2, h / 2, 1, w / 2, h / 2, w / 2); gr.addColorStop(0, 'rgba(0,0,0,.96)'); gr.addColorStop(0.38, 'rgba(0,0,0,.78)'); gr.addColorStop(0.7, 'rgba(0,0,0,.18)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.setTransform(1, 0, 0, h / w, 0, 0); g.fillStyle = gr; g.fillRect(0, 0, w, w); });
+  const coreMat = () => new THREE.MeshBasicMaterial({ map: core, transparent: true, depthWrite: false, opacity: 0 });
   function food(parts, shW) {
     const o = new THREE.Group(); parts.forEach(p => o.add(p));
     const sh = new THREE.Mesh(new THREE.PlaneGeometry(shW, shW * 0.6), new THREE.MeshBasicMaterial({ map: blob, transparent: true, depthWrite: false, opacity: 0.55 }));
     sh.rotation.x = -Math.PI / 2; sh.position.set(0, 0.004, 0.05); sh.renderOrder = 3; o.add(sh);
-    o.userData = { w: parts[0].userData.w, h: Math.max(...parts.map(p => p.userData.h)), sh, parts }; scene.add(o); o.visible = false; return o;
+    const cs = new THREE.Mesh(new THREE.PlaneGeometry(shW * 0.78, shW * 0.3), coreMat()); cs.rotation.x = -Math.PI / 2; cs.position.set(0, 0.006, 0.16); cs.renderOrder = 4; o.add(cs);
+    o.userData = { w: parts[0].userData.w, h: Math.max(...parts.map(p => p.userData.h)), sh, cs, parts }; scene.add(o); o.visible = false; return o;
   }
   const trayR = THREE.photoRelief(trayT, { w: 1, depth: 0.16, round: 0.35, seg: 80 }), pileF = THREE.photoRelief(friesT, { w: 1, depth: 0.12, round: 0.3 });
   // v12: a fuller well of fries like z024 — a second, mirrored heap behind and above the first
@@ -411,13 +415,14 @@ async function initAnim() {
   // clear snap lid: a glossy clear-plastic film over the rim ellipse (rim ring + soft dome + specular streaks), in the photo's perspective
   const lidTex = canvasTex(512, 160, (g, w, h) => {
     g.save(); g.beginPath(); g.ellipse(w / 2, h / 2, w / 2 - 6, h / 2 - 6, 0, 0, 7); g.clip();
-    const gr = g.createRadialGradient(w * 0.42, h * 0.38, 4, w / 2, h / 2, w / 2); gr.addColorStop(0, 'rgba(255,255,255,0.30)'); gr.addColorStop(0.6, 'rgba(255,255,255,0.10)'); gr.addColorStop(1, 'rgba(255,255,255,0.22)');
+    const gr = g.createRadialGradient(w * 0.42, h * 0.38, 4, w / 2, h / 2, w / 2); gr.addColorStop(0, 'rgba(255,255,255,0.38)'); gr.addColorStop(0.6, 'rgba(255,255,255,0.14)'); gr.addColorStop(1, 'rgba(255,255,255,0.34)');
     g.fillStyle = gr; g.fillRect(0, 0, w, h);
-    g.globalCompositeOperation = 'lighter'; g.strokeStyle = 'rgba(255,255,255,0.55)'; g.lineCap = 'round';
-    g.lineWidth = 7; g.beginPath(); g.moveTo(w * 0.2, h * 0.62); g.quadraticCurveTo(w * 0.32, h * 0.22, w * 0.55, h * 0.16); g.stroke();
-    g.lineWidth = 3; g.beginPath(); g.moveTo(w * 0.66, h * 0.2); g.lineTo(w * 0.76, h * 0.28); g.stroke(); g.restore();
-    g.strokeStyle = 'rgba(255,255,255,0.75)'; g.lineWidth = 6; g.beginPath(); g.ellipse(w / 2, h / 2, w / 2 - 6, h / 2 - 6, 0, 0, 7); g.stroke();
-    g.strokeStyle = 'rgba(255,255,255,0.35)'; g.lineWidth = 3; g.beginPath(); g.ellipse(w / 2, h / 2, w / 2 - 22, h / 2 - 16, 0, 0, 7); g.stroke();
+    g.globalCompositeOperation = 'lighter'; g.strokeStyle = 'rgba(255,255,255,0.85)'; g.lineCap = 'round';
+    g.lineWidth = 9; g.beginPath(); g.moveTo(w * 0.2, h * 0.62); g.quadraticCurveTo(w * 0.32, h * 0.22, w * 0.55, h * 0.16); g.stroke();
+    g.lineWidth = 5; g.beginPath(); g.moveTo(w * 0.64, h * 0.2); g.lineTo(w * 0.78, h * 0.3); g.stroke(); g.restore();
+    g.strokeStyle = 'rgba(20,14,10,0.35)'; g.lineWidth = 4; g.beginPath(); g.ellipse(w / 2, h / 2 + 3, w / 2 - 3, h / 2 - 3, 0, 0.15, Math.PI - 0.15); g.stroke(); // lid lip shadow
+    g.strokeStyle = 'rgba(255,255,255,0.95)'; g.lineWidth = 9; g.beginPath(); g.ellipse(w / 2, h / 2, w / 2 - 7, h / 2 - 7, 0, 0, 7); g.stroke();
+    g.strokeStyle = 'rgba(255,255,255,0.6)'; g.lineWidth = 4; g.beginPath(); g.ellipse(w / 2, h / 2, w / 2 - 24, h / 2 - 17, 0, 0, 7); g.stroke();
   });
   const lidMat = new THREE.MeshBasicMaterial({ map: lidTex, transparent: true, depthWrite: false, toneMapped: false });
   const lidGeo = new THREE.PlaneGeometry(0.97, 0.33);
@@ -427,6 +432,7 @@ async function initAnim() {
   const shake = food([THREE.photoRelief(shakeT, { w: 1, depth: 0.42, round: 0.55, dome: 0.1 })], 0.9); await yieldMain();
   const burgerSh = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 1.1), new THREE.MeshBasicMaterial({ map: blob, transparent: true, depthWrite: false, opacity: 0 }));
   burgerSh.rotation.x = -Math.PI / 2; burgerSh.renderOrder = 3; box.add(burgerSh); burgerSh.position.set(SLOT.burger[0], SLOT.burger[1] + 0.004, SLOT.burger[2]);
+  const burgerCore = new THREE.Mesh(new THREE.PlaneGeometry(1.45, 0.5), coreMat()); burgerCore.rotation.x = -Math.PI / 2; burgerCore.renderOrder = 4; box.add(burgerCore); burgerCore.position.set(SLOT.burger[0] - 0.03, SLOT.burger[1] + 0.006, SLOT.burger[2] + 0.13);
   const FOOD = { fries, dipO, dipD, shake };
   fries.userData.lift = 1.7; dipO.userData.lift = dipD.userData.lift = 1.1; shake.userData.lift = 0.5;
   fries.userData.k = 1.3; shake.userData.k = 0.86; dipO.userData.k = dipD.userData.k = 0.46; const KB = 1.3 / (4.84 / U); const LEAN = 0.5; // v11: food leans back with part of the box pitch, so it sits in the compartments seen from above (z020/z024) // v11: burger + shake bigger, like z020/z024
@@ -588,6 +594,7 @@ async function initAnim() {
       burger.updateMatrixWorld(true);
     }
     burgerSh.material.opacity = 0.7 * ease(clamp01(kBox * 1.6)) * (1 - sink); burgerSh.visible = box.visible && inBox && burgerSh.material.opacity > 0.01;
+    burgerCore.material.opacity = Math.min(1, burgerSh.material.opacity * 1.35); burgerCore.visible = burgerSh.visible;
 
     // fries, dips and shake: real geometry flying in, then dropping into their compartments
     const fly = (p, from, t) => [lerp(from[0], p[0], t), lerp(from[1], p[1], t), p[2]];
@@ -601,6 +608,7 @@ async function initAnim() {
       place3(o, k === 'dipO' ? fly(it[k], FROM[k], 0) : fly(it[k], FROM[k], itE), slot, kBox, roll, SPIN[k]);
       if (o.userData.tray) { const inTray = kBox < 0.3; o.userData.tray.visible = inTray; o.userData.pile.visible = !inTray; } // fries: tray in the light scene, loose golden heap in the box
       o.userData.sh.material.opacity = 0.55 * ease(clamp01(kBox * 1.6)) * (1 - sink); o.userData.sh.visible = o.userData.sh.material.opacity > 0.01;
+      o.userData.cs.material.opacity = Math.min(1, o.userData.sh.material.opacity * 1.5); o.userData.cs.visible = o.userData.sh.visible;
     }
     // key light + shadow frustum follow the box, or the burger before the box arrives
     { const sc = sun.shadow.camera; let c, ext;
@@ -630,13 +638,20 @@ async function initAnim() {
     if (scrolling) { if (RES.cur > RES.low && (RES.slow > 0 || RES.ema > 21)) { RES.slow = 1; setRes(RES.low); } }
     else if (RES.cur < DPR) setRes(DPR);
   }
+  // v12: feed each photo relief its yaw against the camera, so its baked light shifts a little as it turns
+  const RELIEFS = []; scene.traverse(o => { if (o.userData && o.userData.yaw) RELIEFS.push(o); });
+  const vYaw = new THREE.Vector3(); window.__RY = RELIEFS;
+  function reliefYaw() {
+    for (const r of RELIEFS) { if (!r.parent || !r.parent.visible || !r.visible) continue;
+      r.getWorldDirection(vYaw); const sx = Math.sign(r.matrixWorld.elements[0]) || 1; r.userData.yaw.value = Math.max(-1, Math.min(1, Math.atan2(vYaw.x, vYaw.z) * 4.2 * sx)); }
+  }
   function render() {
     const now = performance.now(); adaptRes(now);
     tNow = now / 1000;
     const floating = pinned && (S.explode > 0.05 || S.boxIn > 0) || Math.abs(mouse.tx - mouse.x) + Math.abs(mouse.ty - mouse.y) > 0.002;
     if (!dirty && !floating) return;
     if (!pinned && tl.scrollTrigger.progress >= 1 && stage.getBoundingClientRect().bottom < 0) return;
-    update(); renderer.shadowMap.needsUpdate = (shadowTick++ & 1) === 0; renderer.render(scene, camera); dirty = false;
+    update(); reliefYaw(); renderer.shadowMap.needsUpdate = (shadowTick++ & 1) === 0; renderer.render(scene, camera); dirty = false;
   }
   // compile every material up front (in parallel where the GPU driver allows) so nothing hitches mid-scroll
   { const hid = []; scene.traverse(o => { if (!o.visible) { hid.push(o); o.visible = true; } });
