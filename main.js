@@ -638,7 +638,10 @@ async function initAnim() {
   // compile every material up front (in parallel where the GPU driver allows) so nothing hitches mid-scroll
   { const hid = []; scene.traverse(o => { if (!o.visible) { hid.push(o); o.visible = true; } });
     try { await (renderer.compileAsync ? renderer.compileAsync(scene, camera) : renderer.compile(scene, camera)); } catch (e) {}
-    hid.forEach(o => { o.visible = false; }); await yieldMain(); }
+    hid.forEach(o => { o.visible = false; }); await yieldMain();
+    // v11: upload every photo texture now (one per idle slice) instead of on its first frame mid-scroll
+    const texs = new Set(); scene.traverse(o => { const ms = o.material ? [].concat(o.material) : []; ms.forEach(mt => { if (mt.map) texs.add(mt.map); }); });
+    for (const t of texs) { renderer.initTexture(t); await yieldMain(); } }
   resize();
   update(); renderer.shadowMap.needsUpdate = true; renderer.render(scene, camera);
   canvas.classList.add('on'); heroImg.classList.add('off');

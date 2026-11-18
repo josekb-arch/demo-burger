@@ -35,7 +35,7 @@ export function photoRelief(tex, { w = 1, depth = 0.2, seg = 64, round = 0.4, do
   }
   geo.setAttribute('color', new BufferAttribute(col, 3));
   geo.computeVertexNormals();
-  const mat = (tone, em, side, back) => { const m = new MeshLambertMaterial({ map: tex, emissiveMap: tex, emissive: new Color(em, em, em), color: new Color(tone, tone, tone), alphaTest: 0.5, alphaToCoverage: true, side, toneMapped: false, vertexColors: true,
+  const mat = (tone, em, side, back) => { const m = new MeshLambertMaterial({ map: tex, emissiveMap: tex, emissive: new Color(em, em, em), color: new Color(tone, tone, tone), alphaTest: 0.5, side, toneMapped: false, vertexColors: true,
       polygonOffset: back, polygonOffsetFactor: back ? 2 : 0, polygonOffsetUnits: back ? 4 : 0 }); // back shell always loses the depth tie at the silhouette (no dark specks)
     m.onBeforeCompile = (sh) => { sh.fragmentShader = sh.fragmentShader.replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n\ttotalEmissiveRadiance *= vColor.rgb;'); };
     m.customProgramCacheKey = () => 'relief-ao'; return m; };;
