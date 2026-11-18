@@ -95,7 +95,7 @@ async function initAnim() {
         smash: { x0: L.vw * 0.34, x1: L.vw * 0.64, y0: top + (L.vh - top) * 0.02, y1: L.vh * 0.84 }, // video: centred, the title overlaps its right edge
         stack: { x0: L.vw * 0.31, x1: L.vw * 0.65, y0: top - 2, y1: L.vh * 0.97 }, // labels sit right of x1
         combo: { x0: L.vw * 0.07, x1: L.vw * 0.6, y0: top + 30, y1: bot - 24 }, // video: the reassembled set sits left of centre
-        boxOpen: { x0: L.vw * 0.25, x1: L.vw * 1.0, y0: top - L.vh * 0.16, y1: L.vh + 4 }, // v12: the box fills the frame like z020/z024 (the open lid may run under the nav, as in the video)
+        boxOpen: { x0: L.vw * 0.25, x1: L.vw * 1.0, y0: top + 6, y1: L.vh + 4 }, // v12: the box fills the frame like z020/z024 (the open lid may run under the nav, as in the video)
         boxFront: { x0: L.vw * 0.15, x1: L.vw * 0.86, y0: top + (L.vh - top) * 0.24, y1: L.vh * 0.74 }, // z028 framing
       };
     } else {
@@ -242,7 +242,7 @@ async function initAnim() {
     const later = () => setTimeout(() => (window.requestIdleCallback ? requestIdleCallback(go, { timeout: 2000 }) : go()), 6000);
     if (document.readyState === 'complete') later(); else addEventListener('load', later, { once: true });
   });
-  const THREE = await import('./vendor/three-app.js?v=12');
+  const THREE = await import('./vendor/three-app.js?v=13');
   const canvas = $('#gl');
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'high-performance' });
   renderer.setClearColor(0x000000, 0);
@@ -251,7 +251,7 @@ async function initAnim() {
   const scene = new THREE.Scene();
   await yieldMain();
   // v10: real HDRI (Poly Haven "Studio Small 09", CC0, downsampled to 256x128) + ACES filmic tone mapping
-  try { const pm = new THREE.PMREMGenerator(renderer); const hdr = await new THREE.RGBELoader().loadAsync('assets/env/studio_small_09_128.hdr?v=12');
+  try { const pm = new THREE.PMREMGenerator(renderer); const hdr = await new THREE.RGBELoader().loadAsync('assets/env/studio_small_09_128.hdr?v=13');
     scene.environment = pm.fromEquirectangular(hdr).texture; hdr.dispose(); pm.dispose(); }
   catch (err) { scene.environment = THREE.studioEnv(renderer); }
   scene.environmentIntensity = 0.9; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
@@ -274,7 +274,7 @@ async function initAnim() {
   ];
   const CX = 360, CY = 549;
   const LBL = [[0, 0.5], [1, 0.5], [2, 0.5], [3, 0.8], [3, 0.3], [4, 0.5]]; // label → [layer, height fraction]: cheese + patty share the patty layer
-  const [photoTex, closedTex, layerTex] = await Promise.all([tex('assets/img/burger.webp?v=12'), tex('assets/img/burger1.webp?v=12'), Promise.all(LAY.map(l => tex(`assets/img/${l[0]}.webp?v=12`)))]);
+  const [photoTex, closedTex, layerTex] = await Promise.all([tex('assets/img/burger.webp?v=13'), tex('assets/img/burger1.webp?v=13'), Promise.all(LAY.map(l => tex(`assets/img/${l[0]}.webp?v=13`)))]);
   const burger = new THREE.Group(); scene.add(burger);
   const planeMat = (t) => new THREE.MeshBasicMaterial({ map: t, transparent: true, depthWrite: false, toneMapped: false });
   const U = 4.0; // burger units (hero photo ≈ 4.9 wide) per box unit
@@ -390,12 +390,12 @@ async function initAnim() {
   bsh.rotation.x = -Math.PI / 2; bsh.position.y = 0.002; bsh.renderOrder = 2; box.add(bsh);
   // slots inside the box (box-local, bottom anchored) + widths in box units
   const SLOT = { photo: [-0.89, INS.burger, 0.06, 1.4], burger: [-0.8, INS.burger, 0.2, 0], fries: [0.3, INS.fries, -0.46, 0], dipO: [0.08, INS.dips, 0.4, 0], dipD: [0.52, INS.dips, 0.7, 0], shake: [1.1, INS.shake, 0.22, 0] };
-  const BOX_OPEN = { rx: 0.7, ry: -0.22, lid: -2.05 }, BOX_FRONT = { rx: 0.09, ry: 0.0, lid: 0 }; // open: 3/4 view like the video; closed: straight-on front
+  const BOX_OPEN = { rx: 0.7, ry: -0.42, lid: -2.05 }, BOX_FRONT = { rx: 0.09, ry: 0.0, lid: 0 }; // open: 3/4 view like the video; closed: straight-on front
 
   await yieldMain();
   const blob = canvasTex(256, 128, (g, w, h) => { const gr = g.createRadialGradient(w / 2, h / 2, 2, w / 2, h / 2, w / 2); gr.addColorStop(0, 'rgba(0,0,0,.85)'); gr.addColorStop(0.55, 'rgba(0,0,0,.4)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.setTransform(1, 0, 0, 0.5, 0, h / 4); g.fillStyle = gr; g.fillRect(0, 0, w, w); });
   // v10: photoreal fries / dips / shake as photo reliefs, with a soft contact blob under each
-  const [trayT, friesT, dipOT, dipDT, shakeT] = await Promise.all(['p_tray', 'p_fries', 'p_cupo', 'p_cupd', 'p_shake'].map(n => tex(`assets/img/${n}.webp?v=12`)));
+  const [trayT, friesT, dipOT, dipDT, shakeT] = await Promise.all(['p_tray', 'p_fries', 'p_cupo', 'p_cupd', 'p_shake'].map(n => tex(`assets/img/${n}.webp?v=13`)));
   // v12: tight, dark contact core under each piece (on top of the soft blob) so the food reads as resting on its compartment floor
   const core = canvasTex(256, 96, (g, w, h) => { const gr = g.createRadialGradient(w / 2, h / 2, 1, w / 2, h / 2, w / 2); gr.addColorStop(0, 'rgba(0,0,0,.96)'); gr.addColorStop(0.38, 'rgba(0,0,0,.78)'); gr.addColorStop(0.7, 'rgba(0,0,0,.18)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.setTransform(1, 0, 0, h / w, 0, 0); g.fillStyle = gr; g.fillRect(0, 0, w, w); });
   const coreMat = () => new THREE.MeshBasicMaterial({ map: core, transparent: true, depthWrite: false, opacity: 0 });
@@ -403,7 +403,7 @@ async function initAnim() {
     const o = new THREE.Group(); parts.forEach(p => o.add(p));
     const sh = new THREE.Mesh(new THREE.PlaneGeometry(shW, shW * 0.6), new THREE.MeshBasicMaterial({ map: blob, transparent: true, depthWrite: false, opacity: 0.55 }));
     sh.rotation.x = -Math.PI / 2; sh.position.set(0, 0.004, 0.05); sh.renderOrder = 3; o.add(sh);
-    const cs = new THREE.Mesh(new THREE.PlaneGeometry(shW * 0.78, shW * 0.3), coreMat()); cs.rotation.x = -Math.PI / 2; cs.position.set(0, 0.006, 0.16); cs.renderOrder = 4; o.add(cs);
+    const cs = new THREE.Mesh(new THREE.PlaneGeometry(shW * 0.9, shW * 0.36), coreMat()); cs.rotation.x = -Math.PI / 2; cs.position.set(0, 0.006, 0.16); cs.renderOrder = 4; o.add(cs);
     o.userData = { w: parts[0].userData.w, h: Math.max(...parts.map(p => p.userData.h)), sh, cs, parts }; scene.add(o); o.visible = false; return o;
   }
   const trayR = THREE.photoRelief(trayT, { w: 1, depth: 0.16, round: 0.35, seg: 80 }), pileF = THREE.photoRelief(friesT, { w: 1, depth: 0.12, round: 0.3 });
@@ -432,7 +432,7 @@ async function initAnim() {
   const shake = food([THREE.photoRelief(shakeT, { w: 1, depth: 0.42, round: 0.55, dome: 0.1 })], 0.9); await yieldMain();
   const burgerSh = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 1.1), new THREE.MeshBasicMaterial({ map: blob, transparent: true, depthWrite: false, opacity: 0 }));
   burgerSh.rotation.x = -Math.PI / 2; burgerSh.renderOrder = 3; box.add(burgerSh); burgerSh.position.set(SLOT.burger[0], SLOT.burger[1] + 0.004, SLOT.burger[2]);
-  const burgerCore = new THREE.Mesh(new THREE.PlaneGeometry(1.45, 0.5), coreMat()); burgerCore.rotation.x = -Math.PI / 2; burgerCore.renderOrder = 4; box.add(burgerCore); burgerCore.position.set(SLOT.burger[0] - 0.03, SLOT.burger[1] + 0.006, SLOT.burger[2] + 0.13);
+  const burgerCore = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 0.58), coreMat()); burgerCore.rotation.x = -Math.PI / 2; burgerCore.renderOrder = 4; box.add(burgerCore); burgerCore.position.set(SLOT.burger[0] - 0.03, SLOT.burger[1] + 0.006, SLOT.burger[2] + 0.13);
   const FOOD = { fries, dipO, dipD, shake };
   fries.userData.lift = 1.7; dipO.userData.lift = dipD.userData.lift = 1.1; shake.userData.lift = 0.5;
   fries.userData.k = 1.3; shake.userData.k = 0.86; dipO.userData.k = dipD.userData.k = 0.46; const KB = 1.3 / (4.84 / U); const LEAN = 0.5; // v11: food leans back with part of the box pitch, so it sits in the compartments seen from above (z020/z024) // v11: burger + shake bigger, like z020/z024
@@ -594,7 +594,7 @@ async function initAnim() {
       burger.updateMatrixWorld(true);
     }
     burgerSh.material.opacity = 0.7 * ease(clamp01(kBox * 1.6)) * (1 - sink); burgerSh.visible = box.visible && inBox && burgerSh.material.opacity > 0.01;
-    burgerCore.material.opacity = Math.min(1, burgerSh.material.opacity * 1.35); burgerCore.visible = burgerSh.visible;
+    burgerCore.material.opacity = Math.min(1, burgerSh.material.opacity * 1.6); burgerCore.visible = burgerSh.visible;
 
     // fries, dips and shake: real geometry flying in, then dropping into their compartments
     const fly = (p, from, t) => [lerp(from[0], p[0], t), lerp(from[1], p[1], t), p[2]];
