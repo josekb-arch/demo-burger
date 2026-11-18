@@ -272,7 +272,7 @@ async function initAnim() {
     ['l_patty1', 117, 594, 482, 172], ['l_patty2', 117, 766, 487, 192], ['l_botbun', 161, 958, 399, 202],
   ];
   const CX = 360, CY = 628;
-  const [photoTex, layerTex] = await Promise.all([tex('assets/img/burger.webp?v=10'), Promise.all(LAY.map(l => tex(`assets/img/${l[0]}.webp?v=10`)))]);
+  const [photoTex, layerTex] = await Promise.all([tex('assets/img/burger.webp'), Promise.all(LAY.map(l => tex(`assets/img/${l[0]}.webp?v=10`)))]);
   const burger = new THREE.Group(); scene.add(burger);
   const planeMat = (t) => new THREE.MeshBasicMaterial({ map: t, transparent: true, depthWrite: false, toneMapped: false });
   const U = 4.0; // burger units (hero photo ≈ 4.9 wide) per box unit
